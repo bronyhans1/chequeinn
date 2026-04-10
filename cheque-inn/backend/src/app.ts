@@ -51,6 +51,26 @@ app.get("/health", async (req, res) => {
   });
 });
 
+app.get("/api/health", async (req, res) => {
+  const { error } = await supabaseAdmin
+    .from("roles")
+    .select("*")
+    .limit(1);
+
+  if (error) {
+    return res.json({
+      status: "Backend running 🚀",
+      database: "Connection failed ❌",
+      error: error.message,
+    });
+  }
+
+  return res.json({
+    status: "Backend running 🚀",
+    database: "Connected to Supabase ✅",
+  });
+});
+
 app.get(
   "/protected",
   authMiddleware,
