@@ -7,7 +7,7 @@ import { BRAND } from "@/lib/branding";
 
 /** Landing / sales contact — organizations request onboarding here (not in-app support). */
 const LANDING_CONTACT_MAILTO =
-  "mailto:support@chequeinn.com?subject=" + encodeURIComponent("Request access — Cheque-Inn Systems");
+  "mailto:support@chequeinn.com?subject=" + encodeURIComponent("Request access — Cheque-Inn");
 
 function useSyncHtmlThemeFromStorage() {
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function HomePage() {
             <Link href="/" className="group inline-flex min-w-0 items-center gap-2.5 sm:gap-3">
               <BrandMark className="shrink-0" />
               <div className="min-w-0 leading-tight">
-                <div className="truncate text-sm font-semibold tracking-tight">Cheque-Inn Systems</div>
+                <div className="truncate text-sm font-semibold tracking-tight">Cheque-Inn</div>
                 <div className="hidden text-xs text-theme-muted min-[380px]:block">Workforce Management</div>
               </div>
             </Link>
@@ -327,7 +327,7 @@ export default function HomePage() {
           <div className="landing-footer-surface mx-auto max-w-6xl rounded-t-2xl px-4 py-7 sm:px-6 sm:py-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm font-semibold">
-                Cheque-Inn Systems © {new Date().getFullYear()}. All rights reserved.
+                Cheque-Inn © {new Date().getFullYear()}. All rights reserved.
               </div>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
                 <Link href="/privacy" className="text-theme-muted transition-colors hover:text-theme">
