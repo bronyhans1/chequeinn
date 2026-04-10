@@ -1,0 +1,437 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 16rem;
+  --header-height: 3.5rem;
+  /* Light: cool grey canvas, elevated white surfaces */
+  --app-bg: #e8ecf3;
+  --surface: #ffffff;
+  --surface-muted: #f2f5f9;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --border-soft: rgba(15, 23, 42, 0.09);
+  --nav-hover: rgba(15, 23, 42, 0.055);
+  --nav-active-bg: rgba(37, 99, 235, 0.11);
+  --nav-active-text: #1d4ed8;
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 20px rgba(15, 23, 42, 0.07);
+  --shadow-drawer: -4px 0 32px rgba(15, 23, 42, 0.09);
+  --overlay-scrim: rgba(15, 23, 42, 0.4);
+  --state-error-bg: rgba(254, 242, 242, 0.96);
+  --state-error-border: rgba(220, 38, 38, 0.2);
+  --state-error-text: #b91c1c;
+  --state-error-btn-bg: rgba(254, 226, 226, 0.9);
+  --state-success-bg: rgba(236, 253, 245, 0.96);
+  --state-success-border: rgba(16, 185, 129, 0.22);
+  --state-success-text: #047857;
+  --ring-focus: rgba(37, 99, 235, 0.28);
+}
+
+html.dark {
+  --app-bg: #070b14;
+  --surface: #111a2c;
+  --surface-muted: #0c1322;
+  --text-primary: #e8edf4;
+  --text-muted: #8b9ab5;
+  --border-soft: rgba(148, 163, 184, 0.14);
+  --nav-hover: rgba(255, 255, 255, 0.065);
+  --nav-active-bg: rgba(96, 165, 250, 0.14);
+  --nav-active-text: #93c5fd;
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 28px rgba(0, 0, 0, 0.4);
+  --shadow-drawer: -6px 0 40px rgba(0, 0, 0, 0.45);
+  --overlay-scrim: rgba(2, 6, 23, 0.6);
+  --state-error-bg: rgba(69, 10, 10, 0.52);
+  --state-error-border: rgba(248, 113, 113, 0.28);
+  --state-error-text: #fecaca;
+  --state-error-btn-bg: rgba(127, 29, 29, 0.4);
+  --state-success-bg: rgba(6, 78, 59, 0.48);
+  --state-success-border: rgba(52, 211, 153, 0.28);
+  --state-success-text: #6ee7b7;
+  --ring-focus: rgba(96, 165, 250, 0.32);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  @apply antialiased;
+  background: var(--app-bg);
+  color: var(--text-primary);
+}
+
+/* Main / platform sidebar frame */
+.sidebar-shell {
+  background: var(--surface-muted);
+  border-right: 1px solid var(--border-soft);
+  box-shadow: inset -8px 0 16px -10px rgba(15, 23, 42, 0.07);
+}
+html.dark .sidebar-shell {
+  box-shadow: inset -10px 0 20px -12px rgba(0, 0, 0, 0.42);
+}
+
+/* Sidebar / platform nav — hover, active, focus */
+.nav-link {
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.nav-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--surface-muted), 0 0 0 4px var(--ring-focus);
+}
+.nav-link:not(.nav-link-active):hover {
+  color: var(--text-primary);
+}
+.nav-link-active {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+}
+html.dark .nav-link-active {
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.18);
+}
+
+/* Primary actions */
+.btn-primary {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.22);
+}
+html.dark .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 14px rgba(96, 165, 250, 0.18);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+.btn-primary:disabled {
+  cursor: not-allowed;
+}
+
+/* Form controls — shared focus ring */
+.input-field {
+  @apply w-full rounded-lg border px-3 py-2 text-sm;
+  border-color: var(--border-soft);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input-field::placeholder {
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 3px var(--ring-focus);
+}
+html.dark .input-field:focus {
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+.input-field:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+/* Semantic text (prefer over raw gray-* for body copy in themed UI) */
+.text-theme {
+  color: var(--text-primary);
+}
+.text-theme-muted {
+  color: var(--text-muted);
+}
+
+/* Outline / secondary actions */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.15s ease;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--nav-hover);
+}
+.btn-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.btn-secondary-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Preset / chip controls (date ranges, filters) */
+.btn-preset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+  padding: 0.25rem 0.625rem;
+  transition: background-color 0.15s ease;
+}
+.btn-preset:hover:not(:disabled) {
+  background: var(--nav-hover);
+}
+.btn-preset:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.surface-callout {
+  border: 1px solid var(--border-soft);
+  border-radius: 0.5rem;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.alert-error {
+  border-radius: 0.375rem;
+  border: 1px solid var(--state-error-border);
+  background: var(--state-error-bg);
+  color: var(--state-error-text);
+  font-size: 0.875rem;
+}
+
+.alert-success {
+  border-radius: 0.375rem;
+  border: 1px solid var(--state-success-border);
+  background: var(--state-success-bg);
+  color: var(--state-success-text);
+  font-size: 0.875rem;
+}
+
+/* Warning callout — readable in light & dark (pairs with html.dark) */
+.callout-warning {
+  border-radius: 0.5rem;
+  border: 1px solid rgb(253 230 138); /* amber-200 */
+  background: rgb(255 251 235); /* amber-50 */
+  color: rgb(146 64 14); /* amber-800 */
+  line-height: 1.45;
+  padding: 0.5rem 0.75rem;
+}
+html.dark .callout-warning {
+  border-color: rgba(245 158 11, 0.3); /* amber-500/30 */
+  background: rgba(245 158 11, 0.1); /* amber-500/10 */
+  color: rgb(252 211 77); /* amber-300 */
+}
+
+/* QR modules — keep a light pad for reliable scanning */
+.qr-code-pad {
+  background: #ffffff;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Login wallpaper — SVG art, subtle; light/dark via html.dark */
+.login-page-shell {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  background: var(--app-bg);
+}
+
+.login-art-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.login-art-layer--light {
+  background-image: url(/brand/login-bg-light.svg);
+  opacity: 0.2;
+}
+
+.login-art-layer--dark {
+  background-image: url(/brand/login-bg-dark.svg);
+  opacity: 0.13;
+}
+
+.login-page-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Public landing — hero-anchored radials + vertical wash; no patterns, images, or login art */
+.landing-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  color: var(--text-primary);
+  background-color: var(--app-bg);
+  /* First image = top layer. Left = hero column (~max-w-6xl grid), right = preview card; vertical = base atmosphere */
+  background-image:
+    radial-gradient(
+      ellipse 110% 88% at 26% 30%,
+      rgba(37, 99, 235, 0.16),
+      transparent 64%
+    ),
+    radial-gradient(
+      ellipse 78% 74% at 76% 34%,
+      rgba(67, 56, 202, 0.12),
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      var(--surface-muted) 0%,
+      var(--app-bg) 50%,
+      var(--app-bg) 100%
+    );
+}
+html.dark .landing-shell {
+  background-image:
+    radial-gradient(
+      ellipse 118% 92% at 24% 28%,
+      rgba(96, 165, 250, 0.2),
+      transparent 66%
+    ),
+    radial-gradient(
+      ellipse 82% 76% at 74% 32%,
+      rgba(129, 140, 248, 0.14),
+      transparent 62%
+    ),
+    linear-gradient(
+      180deg,
+      var(--surface-muted) 0%,
+      var(--app-bg) 48%,
+      var(--app-bg) 100%
+    );
+}
+
+/* Landing chrome — subtle “glass” surfaces for header/footer */
+.landing-chrome {
+  /* Visibly tinted (blue/slate) glass — should not read as plain white */
+  background: rgba(234, 241, 255, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html.dark .landing-chrome {
+  /* Lifted dark surface with a cool tint (still subtle, but clearly not flat) */
+  background: rgba(15, 24, 44, 0.88);
+}
+
+.landing-footer-surface {
+  /* Slightly deeper tint than header for grounding */
+  background: rgba(226, 236, 255, 0.82);
+}
+html.dark .landing-footer-surface {
+  background: rgba(11, 18, 34, 0.84); /* grounded, cool dark */
+}
+
+/* Public legal pages — login-family art + soft veil; art stays behind content only */
+.legal-page-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  color: var(--text-primary);
+  background-color: var(--app-bg);
+  background-image: linear-gradient(180deg, var(--surface-muted) 0%, var(--app-bg) 38%, var(--app-bg) 100%);
+}
+html.dark .legal-page-shell {
+  background-image: linear-gradient(180deg, var(--surface-muted) 0%, var(--app-bg) 36%, var(--app-bg) 100%);
+}
+
+.legal-art-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+.legal-art-layer--light {
+  background-image: url(/brand/login-bg-light.svg);
+  opacity: 0.11;
+}
+.legal-art-layer--dark {
+  background-image: url(/brand/login-bg-dark.svg);
+  opacity: 0.085;
+}
+
+.legal-page-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Gradient frame (landing-inspired) + solid inner reading surface */
+.legal-card-frame {
+  border-radius: 1.25rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.42) 0%,
+    rgba(99, 102, 241, 0.32) 42%,
+    rgba(148, 163, 184, 0.18) 100%
+  );
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+html.dark .legal-card-frame {
+  background: linear-gradient(
+    135deg,
+    rgba(96, 165, 250, 0.34) 0%,
+    rgba(129, 140, 248, 0.26) 45%,
+    rgba(30, 41, 59, 0.55) 100%
+  );
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+.legal-card-inner {
+  border-radius: calc(1.25rem - 1px);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+html.dark .legal-card-inner {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.legal-contact-panel {
+  border-radius: 0.875rem;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-muted);
+  padding: 1rem 1.125rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+html.dark .legal-contact-panel {
+  background: rgba(17, 26, 44, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
