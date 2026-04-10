@@ -24,10 +24,10 @@ export function Header() {
   return (
     <>
       <header
-        className="fixed right-0 top-0 z-20 flex h-[var(--header-height)] items-center justify-between border-b px-6"
+        className="fixed right-0 top-0 z-20 flex h-[var(--header-height)] min-w-0 items-center justify-between border-b px-4 sm:px-6"
         style={{ left: "var(--sidebar-width)", borderColor: "var(--border-soft)", background: "var(--surface)" }}
       >
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           {user?.profileCompletion && !user.profileCompletion.requiredComplete ? (
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/70 bg-amber-50/95 px-3 py-1 text-xs font-medium text-amber-900 shadow-sm dark:border-amber-800/50 dark:bg-amber-950/55 dark:text-amber-200">
               <span>Complete required profile items</span>
@@ -40,13 +40,13 @@ export function Header() {
             </div>
           ) : null}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
         {user && (
           <>
               <button
                 type="button"
                 onClick={() => setProfileOpen(true)}
-                className="flex items-center gap-3 rounded-lg border px-3 py-1.5 transition-all duration-150 hover:bg-[var(--nav-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 active:scale-[0.99]"
+                className="flex min-w-0 max-w-full items-center gap-2 rounded-lg border px-2 py-1.5 transition-all duration-150 hover:bg-[var(--nav-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 active:scale-[0.99] sm:gap-3 sm:px-3"
                 style={{ borderColor: "var(--border-soft)", background: "var(--surface-muted)" }}
               >
                 <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/45 dark:text-primary-200">
@@ -56,11 +56,11 @@ export function Header() {
                     (user.firstName?.[0] ?? user.email[0] ?? "U").toUpperCase()
                   )}
                 </div>
-                <span className="text-left">
-                  <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                <span className="min-w-0 text-left">
+                  <span className="block truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                     {[user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.email}
                   </span>
-                  <span className="block text-xs" style={{ color: "var(--text-muted)" }}>
+                  <span className="block truncate text-xs" style={{ color: "var(--text-muted)" }}>
                     {user.roles?.join(", ") || "User"}
                   </span>
                 </span>
