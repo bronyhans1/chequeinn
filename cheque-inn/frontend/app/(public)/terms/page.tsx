@@ -6,9 +6,9 @@ export default function TermsOfServicePage() {
     <div className="legal-page-shell">
       <div className="legal-art-layer legal-art-layer--light dark:hidden" aria-hidden />
       <div className="legal-art-layer legal-art-layer--dark hidden dark:block" aria-hidden />
-      <div className="legal-page-content px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mx-auto w-full max-w-4xl">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="legal-page-content px-3 py-8 sm:px-6 sm:py-12 md:py-14">
+        <div className="mx-auto w-full min-w-0 max-w-4xl">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-2 sm:mb-6 sm:gap-3">
             <Link href="/" className="text-sm font-semibold text-theme-muted hover:text-theme">
               ← Home
             </Link>
@@ -18,16 +18,21 @@ export default function TermsOfServicePage() {
           </div>
 
           <div className="legal-card-frame">
-            <main className="legal-card-inner px-6 py-8 sm:px-10 sm:py-10">
-          <header className="mb-10">
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Terms of Service</h1>
+            <main className="legal-card-inner px-4 py-6 sm:px-10 sm:py-10">
+          <header className="mb-8 sm:mb-10">
+            <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
+              Terms of Service
+            </h1>
             <p className="mt-2 text-sm text-theme-muted">Cheque-Inn Systems</p>
             <div className="mt-5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium text-theme-muted" style={{ borderColor: "var(--border-soft)", background: "var(--surface-muted)" }}>
               <span className="text-theme">Effective Date:</span> 1st April 2026
             </div>
           </header>
 
-          <div className="space-y-8 text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+          <div
+            className="mx-auto max-w-[65ch] space-y-8 text-sm leading-relaxed text-pretty"
+            style={{ color: "var(--text-primary)" }}
+          >
         <section>
           <h2 className="text-base font-semibold">1. Introduction</h2>
           <p className="mt-2">Welcome to Cheque-Inn Systems.</p>

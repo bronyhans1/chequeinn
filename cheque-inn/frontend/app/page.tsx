@@ -45,33 +45,33 @@ export default function HomePage() {
   return (
     <div className="landing-shell flex flex-col">
       <div className="flex min-h-screen flex-col">
-        <header className="mx-auto w-full max-w-6xl px-6 pt-6">
+        <header className="mx-auto w-full min-w-0 max-w-6xl px-4 pt-4 sm:px-6 sm:pt-6">
           <div
-            className="landing-chrome flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 shadow-sm sm:px-5"
+            className="landing-chrome flex flex-col gap-3 rounded-2xl border px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
             style={{
               borderColor: "var(--border-soft)",
               boxShadow: "var(--shadow-soft)",
             }}
           >
-            <Link href="/" className="group inline-flex items-center gap-3">
-              <BrandMark />
-              <div className="hidden min-[380px]:block leading-tight">
-                <div className="text-sm font-semibold tracking-tight">Cheque-Inn Systems</div>
-                <div className="text-xs text-theme-muted">Workforce Management</div>
+            <Link href="/" className="group inline-flex min-w-0 items-center gap-2.5 sm:gap-3">
+              <BrandMark className="shrink-0" />
+              <div className="min-w-0 leading-tight">
+                <div className="truncate text-sm font-semibold tracking-tight">Cheque-Inn Systems</div>
+                <div className="hidden text-xs text-theme-muted min-[380px]:block">Workforce Management</div>
               </div>
             </Link>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex w-full min-w-0 flex-col gap-2 min-[400px]:flex-row min-[400px]:items-center min-[400px]:justify-end sm:w-auto">
               <a
                 href={LANDING_CONTACT_MAILTO}
-                className="rounded-lg border px-4 py-2 text-sm font-semibold transition-colors hover:bg-[var(--nav-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border px-3 py-2.5 text-center text-sm font-semibold transition-colors hover:bg-[var(--nav-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 sm:px-4 sm:py-2"
                 style={{ borderColor: "var(--border-soft)", color: "var(--text-primary)" }}
               >
                 Let’s Talk
               </a>
               <Link
                 href="/login"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/35"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-primary-600 px-3 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/35 sm:px-4 sm:py-2"
                 aria-label="Sign in"
               >
                 Sign in
@@ -80,29 +80,29 @@ export default function HomePage() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-16 pt-10 sm:pt-12">
+        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-12 pt-8 sm:px-6 sm:pb-16 sm:pt-10 md:pt-12">
           {/* HERO */}
-          <section className="grid gap-14 lg:grid-cols-12 lg:items-center lg:gap-12">
-            <div className="lg:col-span-7">
-              <h1 className="text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-[3.15rem] lg:leading-[1.06]">
+          <section className="grid gap-10 sm:gap-12 lg:grid-cols-12 lg:items-center lg:gap-14">
+            <div className="min-w-0 lg:col-span-7">
+              <h1 className="text-[1.65rem] font-semibold leading-[1.12] tracking-tight text-balance sm:text-4xl sm:leading-[1.08] md:text-5xl lg:text-[3.15rem] lg:leading-[1.06]">
                 Smarter Workforce. Seamless Management.
               </h1>
-              <p className="mt-6 max-w-xl text-base leading-[1.65] text-theme-muted sm:text-[1.0625rem]">
+              <p className="mt-5 max-w-xl text-[0.9375rem] leading-relaxed text-theme-muted sm:mt-6 sm:text-base sm:leading-[1.65] md:text-[1.0625rem]">
                 One platform for attendance, payroll visibility, leave, and reporting.{" "}
                 <span className="text-theme">Admins</span> run the organization on the web;{" "}
                 <span className="text-theme">teams</span> use mobile on-site and across locations.
               </p>
 
-              <div className="mt-10 flex flex-wrap items-center gap-3">
+              <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center">
                 <Link
                   href="/login"
-                  className="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary-900/10 transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/35"
+                  className="inline-flex w-full items-center justify-center rounded-lg bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-primary-900/10 transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/35 sm:w-auto sm:py-2.5"
                 >
                   Sign in
                 </Link>
                 <a
                   href={LANDING_CONTACT_MAILTO}
-                  className="rounded-lg border px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-[var(--nav-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30"
+                  className="inline-flex w-full items-center justify-center rounded-lg border px-5 py-3 text-sm font-semibold transition-colors hover:bg-[var(--nav-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 sm:w-auto sm:py-2.5"
                   style={{
                     background: "var(--surface)",
                     borderColor: "var(--border-soft)",
@@ -125,7 +125,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="lg:col-span-5">
+            <div className="min-w-0 lg:col-span-5">
               <div
                 className="overflow-hidden rounded-2xl border"
                 style={{
@@ -324,7 +324,7 @@ export default function HomePage() {
           className="mt-auto border-t"
           style={{ borderColor: "var(--border-soft)" }}
         >
-          <div className="landing-footer-surface mx-auto max-w-6xl rounded-t-2xl px-6 py-8">
+          <div className="landing-footer-surface mx-auto max-w-6xl rounded-t-2xl px-4 py-7 sm:px-6 sm:py-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm font-semibold">
                 Cheque-Inn Systems © {new Date().getFullYear()}. All rights reserved.

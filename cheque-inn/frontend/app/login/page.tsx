@@ -31,9 +31,12 @@ function useSyncHtmlThemeFromStorage() {
 function LoginLegalFooter() {
   const year = new Date().getFullYear();
   return (
-    <footer className="w-full shrink-0 pb-6 pt-3 text-center text-xs" style={{ color: "var(--text-muted)" }}>
+    <footer
+      className="w-full max-w-lg shrink-0 px-2 pb-6 pt-3 text-center text-xs leading-snug sm:mx-auto sm:max-w-xl sm:px-4"
+      style={{ color: "var(--text-muted)" }}
+    >
       <p>Cheque-Inn © {year}</p>
-      <p className="mt-2">
+      <p className="mt-2 text-pretty">
         By continuing, you agree to Cheque-Inn’s{" "}
         <Link
           href="/terms"
@@ -84,7 +87,7 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
-      <div className="login-page-shell flex min-h-screen flex-col px-4">
+      <div className="login-page-shell flex min-h-screen flex-col overflow-x-clip px-3 sm:px-4">
         <div className="login-art-layer login-art-layer--light dark:hidden" aria-hidden />
         <div className="login-art-layer login-art-layer--dark hidden dark:block" aria-hidden />
         <div className="login-page-content flex flex-1 items-center justify-center text-sm" style={{ color: "var(--text-muted)" }}>
@@ -97,7 +100,7 @@ export default function LoginPage() {
 
   if (user) {
     return (
-      <div className="login-page-shell flex min-h-screen flex-col px-4">
+      <div className="login-page-shell flex min-h-screen flex-col overflow-x-clip px-3 sm:px-4">
         <div className="login-art-layer login-art-layer--light dark:hidden" aria-hidden />
         <div className="login-art-layer login-art-layer--dark hidden dark:block" aria-hidden />
         <div className="login-page-content flex flex-1 items-center justify-center text-sm" style={{ color: "var(--text-muted)" }}>
@@ -149,13 +152,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-page-shell flex min-h-screen flex-col px-4">
+    <div className="login-page-shell flex min-h-screen flex-col overflow-x-clip px-3 sm:px-4">
       <div className="login-art-layer login-art-layer--light dark:hidden" aria-hidden />
       <div className="login-art-layer login-art-layer--dark hidden dark:block" aria-hidden />
-      <div className="login-page-content flex w-full flex-1 items-center justify-center">
-        <div className="w-full max-w-md">
+      <div className="login-page-content flex w-full min-w-0 flex-1 items-center justify-center py-6 sm:py-8">
+        <div className="w-full min-w-0 max-w-md">
           <div
-            className="rounded-2xl border p-8"
+            className="rounded-2xl border p-5 sm:p-8"
             style={{ borderColor: "var(--border-soft)", background: "var(--surface)", boxShadow: "var(--shadow-soft)" }}
           >
             <div className="mb-6 text-center">
@@ -260,14 +263,19 @@ export default function LoginPage() {
               </p>
             </form>
 
-            <div className="mt-6 flex items-center justify-between text-xs" style={{ color: "var(--text-muted)" }}>
+            <div
+              className="mt-6 flex flex-col gap-3 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+              style={{ color: "var(--text-muted)" }}
+            >
               <a
                 href={`mailto:${BRAND.supportEmail}`}
-                className="font-medium text-primary-600 transition-colors duration-150 hover:text-primary-700"
+                className="break-words text-center font-medium text-primary-600 transition-colors duration-150 hover:text-primary-700 sm:text-left"
               >
                 Need help? Contact Us
               </a>
-              <span style={{ opacity: 0.7 }}>v{BRAND.version}</span>
+              <span className="text-center sm:text-right" style={{ opacity: 0.7 }}>
+                v{BRAND.version}
+              </span>
             </div>
           </div>
         </div>

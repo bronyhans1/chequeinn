@@ -145,10 +145,13 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4" style={{ background: "var(--app-bg)" }}>
-      <div className="w-full max-w-md">
+    <div
+      className="flex min-h-screen items-center justify-center overflow-x-clip px-3 py-8 sm:px-4 sm:py-12"
+      style={{ background: "var(--app-bg)" }}
+    >
+      <div className="w-full min-w-0 max-w-md">
         <div
-          className="rounded-2xl border p-8"
+          className="rounded-2xl border p-5 sm:p-8"
           style={{ borderColor: "var(--border-soft)", background: "var(--surface)", boxShadow: "var(--shadow-soft)" }}
         >
           <div className="mb-6 text-center">
@@ -267,11 +270,16 @@ export default function ResetPasswordPage() {
             </form>
           ) : null}
 
-          <div className="mt-6 flex items-center justify-between text-xs" style={{ color: "var(--text-muted)" }}>
-            <a href="/login" className="font-medium text-primary-600 hover:text-primary-700">
+          <div
+            className="mt-6 flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-0"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <a href="/login" className="text-center font-medium text-primary-600 hover:text-primary-700 sm:text-left">
               Back to sign in
             </a>
-            <span style={{ opacity: 0.7 }}>v{BRAND.version}</span>
+            <span className="text-center sm:text-right" style={{ opacity: 0.7 }}>
+              v{BRAND.version}
+            </span>
           </div>
         </div>
       </div>
