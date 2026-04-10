@@ -5,14 +5,11 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { BRAND } from "@/lib/branding";
-import { useAuth } from "@/lib/auth/AuthContext";
-import { getDefaultHomeRoute } from "@/lib/auth/roles";
 
 const MIN_PASSWORD = 8;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,13 +20,6 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (user) {
-      router.replace(getDefaultHomeRoute(user.roles));
-    }
-  }, [user, authLoading, router]);
 
   const markSessionReady = useCallback(() => {
     setSessionReady(true);
@@ -152,14 +142,6 @@ export default function ResetPasswordPage() {
     await supabase.auth.signOut();
     setSuccess(true);
     router.replace("/login?reset=success");
-  }
-
-  if (authLoading || (user && !success)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4" style={{ background: "var(--app-bg)" }}>
-        <div className="text-sm" style={{ color: "var(--text-muted)" }}>Loading…</div>
-      </div>
-    );
   }
 
   return (
