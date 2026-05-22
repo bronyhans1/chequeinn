@@ -10,6 +10,7 @@ import {
   listBranchIdFromContext,
 } from "../../lib/resolveScopedUserIds";
 import { isBranchScopedManagerRole, isCompanyAdminRole } from "../../lib/branchAccess";
+import { assertUserBelongsToCompany } from "../../lib/tenantScope";
 import * as usersRepo from "../users/users.repository";
 
 export async function getToday(
@@ -111,8 +112,13 @@ export async function getUserHistory(
       return;
     }
 
-    if (userId !== requesterId && canViewOthers && !isCompanyAdminRole(roles)) {
-      if (isBranchScopedManagerRole(roles)) {
+    if (userId !== requesterId) {
+      const belongs = await assertUserBelongsToCompany(userId, companyId);
+      if (!belongs.ok) {
+        res.status(belongs.status).json({ success: false, error: belongs.message });
+        return;
+      }
+      if (!isCompanyAdminRole(roles) && isBranchScopedManagerRole(roles)) {
         if (!ctx.branchId) {
           res.status(403).json({
             success: false,

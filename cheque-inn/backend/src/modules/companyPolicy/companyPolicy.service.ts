@@ -10,6 +10,7 @@ export interface UpdatePolicyInput {
   payroll_enabled?: boolean;
   /** IANA timezone, e.g. Africa/Accra */
   business_timezone?: string;
+  overnight_shifts_enabled?: boolean;
   attendance_day_classification_enabled?: boolean;
   minimum_minutes_for_counted_day?: number;
   full_day_minutes_threshold?: number;
@@ -58,6 +59,8 @@ export async function getPolicy(
     ...policy,
     lateness_tracking_enabled: policy.lateness_tracking_enabled ?? true,
     late_pay_deduction_enabled: policy.late_pay_deduction_enabled ?? false,
+    overnight_shifts_enabled:
+      (policy as { overnight_shifts_enabled?: boolean }).overnight_shifts_enabled === true,
     business_timezone: normalizeBusinessTimeZone(
       (policy as { business_timezone?: string | null }).business_timezone
     ),
@@ -108,6 +111,12 @@ export async function updatePolicy(
     typeof data.late_pay_deduction_enabled !== "boolean"
   ) {
     return { data: null, error: "late_pay_deduction_enabled must be a boolean" };
+  }
+  if (
+    data.overnight_shifts_enabled !== undefined &&
+    typeof data.overnight_shifts_enabled !== "boolean"
+  ) {
+    return { data: null, error: "overnight_shifts_enabled must be a boolean" };
   }
 
   let businessTimezonePayload: string | undefined;
@@ -169,6 +178,7 @@ export async function updatePolicy(
     late_pay_deduction_enabled: data.late_pay_deduction_enabled,
     payroll_enabled: data.payroll_enabled,
     business_timezone: businessTimezonePayload,
+    overnight_shifts_enabled: data.overnight_shifts_enabled,
     attendance_day_classification_enabled: data.attendance_day_classification_enabled,
     minimum_minutes_for_counted_day: minM,
     full_day_minutes_threshold: fullM,

@@ -42,8 +42,8 @@ export async function getMyLeave(
   res: Response
 ): Promise<void> {
   try {
-    const userId = req.context!.userId;
-    const requests = await leaveService.getMyLeaveRequests(userId);
+    const { userId, companyId } = getRequiredCompanyContext(req);
+    const requests = await leaveService.getMyLeaveRequests(userId, companyId);
     res.json({ success: true, data: toLeaveApiList(requests) });
   } catch (err) {
     console.error("getMyLeave error", err);

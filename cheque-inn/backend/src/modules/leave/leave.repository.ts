@@ -62,12 +62,14 @@ export async function createLeaveRequest(
 }
 
 export async function getUserLeaveRequests(
-  userId: string
+  userId: string,
+  companyId: string
 ): Promise<LeaveRequestRecord[]> {
   const { data, error } = await supabaseAdmin
     .from("leave_requests")
     .select("*")
     .eq("user_id", userId)
+    .eq("company_id", companyId)
     .order("start_date", { ascending: false });
 
   if (error) throw error;

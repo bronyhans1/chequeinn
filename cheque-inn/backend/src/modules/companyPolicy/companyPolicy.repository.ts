@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "../../config/supabase";
+import { DEFAULT_BUSINESS_TIMEZONE } from "../../lib/businessCalendar";
 
 export interface CompanyPolicyRecord {
   id: string;
@@ -13,6 +14,8 @@ export interface CompanyPolicyRecord {
   payroll_enabled: boolean;
   /** IANA timezone for company calendar "today" in earnings (default UTC). */
   business_timezone: string;
+  /** When true, company may define cross-midnight shifts (see shifts.spans_midnight). Sprint 1: default false. */
+  overnight_shifts_enabled?: boolean;
   attendance_day_classification_enabled: boolean;
   /** Completed minutes below this do not count for monthly salary. */
   minimum_minutes_for_counted_day: number;
@@ -39,6 +42,7 @@ export interface CreatePolicyData {
   full_day_minutes_threshold?: number;
   currency_code?: string;
   working_weekdays?: unknown;
+  overnight_shifts_enabled?: boolean;
 }
 
 export interface UpdatePolicyData {
@@ -48,6 +52,7 @@ export interface UpdatePolicyData {
   late_pay_deduction_enabled?: boolean;
   payroll_enabled?: boolean;
   business_timezone?: string;
+  overnight_shifts_enabled?: boolean;
   attendance_day_classification_enabled?: boolean;
   minimum_minutes_for_counted_day?: number;
   full_day_minutes_threshold?: number;
@@ -79,7 +84,8 @@ export async function createPolicy(
     lateness_tracking_enabled: data.lateness_tracking_enabled ?? true,
     late_pay_deduction_enabled: data.late_pay_deduction_enabled ?? false,
     payroll_enabled: data.payroll_enabled ?? true,
-    business_timezone: data.business_timezone ?? "UTC",
+    business_timezone: data.business_timezone ?? DEFAULT_BUSINESS_TIMEZONE,
+    overnight_shifts_enabled: data.overnight_shifts_enabled ?? false,
     attendance_day_classification_enabled: data.attendance_day_classification_enabled ?? false,
     minimum_minutes_for_counted_day: data.minimum_minutes_for_counted_day ?? 60,
     full_day_minutes_threshold: data.full_day_minutes_threshold ?? 480,
@@ -136,6 +142,9 @@ export async function updatePolicy(
   }
   if (data.full_day_minutes_threshold !== undefined) {
     updates.full_day_minutes_threshold = data.full_day_minutes_threshold;
+  }
+  if (data.overnight_shifts_enabled !== undefined) {
+    updates.overnight_shifts_enabled = data.overnight_shifts_enabled;
   }
 
   const { data: row, error } = await supabaseAdmin

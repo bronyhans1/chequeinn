@@ -16,64 +16,42 @@ import type { ScopedUserIds } from "./attendance.repository";
 import * as leaveRepo from "../leave/leave.repository";
 import * as usersRepo from "../users/users.repository";
 import * as shiftsRepo from "../shifts/shifts.repository";
-import { getNowClockMinutesUtc } from "../../lib/attendanceClockTime";
+import * as companyPolicyService from "../companyPolicy/companyPolicy.service";
+import { shiftRowActive } from "../shifts/shifts.service";
+import {
+  resolveShiftWindow,
+  shouldMarkAbsentNow,
+  toShiftWindowSource,
+} from "../../lib/shiftWindow";
+import {
+  businessMonthStartUtcIso,
+  businessTodayUtcRange,
+  businessWeekStartUtcIso,
+  calendarYmdInTimeZone,
+  normalizeBusinessTimeZone,
+} from "../../lib/businessCalendar";
 
 export interface ServiceResult<T> {
   data: T | null;
   error?: string;
 }
 
-function startOfTodayUtc(): Date {
-  const now = new Date();
-  return new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-      0
-    )
-  );
-}
-
-function startOfWeekUtc(): Date {
-  const today = startOfTodayUtc();
-  const day = today.getUTCDay(); // 0 = Sunday, 1 = Monday ...
-  const diffToMonday = (day + 6) % 7; // days since Monday
-  const monday = new Date(today);
-  monday.setUTCDate(monday.getUTCDate() - diffToMonday);
-  return monday;
-}
-
-function startOfMonthUtc(): Date {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
-  );
-}
-
 function toIso(d: Date): string {
   return d.toISOString();
 }
 
-function timeToMinutes(time: string): number | null {
-  const parts = time.split(":");
-  if (parts.length < 2) return null;
-  const h = Number(parts[0]);
-  const m = Number(parts[1]);
-  if (
-    Number.isNaN(h) ||
-    Number.isNaN(m) ||
-    h < 0 ||
-    h > 23 ||
-    m < 0 ||
-    m > 59
-  ) {
-    return null;
+async function resolveUserShift(
+  userId: string,
+  companyId: string,
+  defaultShift: shiftsRepo.ShiftRecord | null
+): Promise<shiftsRepo.ShiftRecord | null> {
+  const user = await usersRepo.getUserById(userId);
+  if (user?.shift_id) {
+    const s = await shiftsRepo.getShiftById(user.shift_id, companyId);
+    if (s && shiftRowActive(s)) return s;
   }
-  return h * 60 + m;
+  if (defaultShift && shiftRowActive(defaultShift)) return defaultShift;
+  return null;
 }
 
 export async function getTodayOverview(
@@ -88,7 +66,14 @@ export async function getTodayOverview(
   overtime_today: number;
   absent_today: number;
 }>> {
-  const sessions = await repo.getTodaySessions(companyId, scopedUserIds);
+  const policy = await companyPolicyService.getPolicy(companyId);
+  const businessTz = normalizeBusinessTimeZone(policy.business_timezone);
+  const overnightOn = policy.overnight_shifts_enabled === true;
+  const nowIso = toIso(new Date());
+
+  const sessions = await repo.getTodaySessions(companyId, scopedUserIds, businessTz);
+  const activeSessions = await repo.getActiveSessions(companyId, scopedUserIds);
+  const activeUserIds = new Set(activeSessions.map((s) => s.user_id));
 
   const userIds = new Set<string>();
   let active = 0;
@@ -116,9 +101,10 @@ export async function getTodayOverview(
 
   const usersWithoutSessionToday = await repo.getUsersWithoutSessionToday(
     companyId,
-    scopedUserIds
+    scopedUserIds,
+    businessTz
   );
-  const todayDate = new Date().toISOString().slice(0, 10);
+  const todayDate = calendarYmdInTimeZone(new Date(), businessTz).iso;
   let approvedLeavesToday = await leaveRepo.getApprovedLeavesForToday(
     companyId,
     todayDate
@@ -129,30 +115,28 @@ export async function getTodayOverview(
   }
   const onLeaveUserIds = new Set(approvedLeavesToday.map((l) => l.user_id));
   const notOnLeave = usersWithoutSessionToday.filter(
-    id => !onLeaveUserIds.has(id)
+    (id) => !onLeaveUserIds.has(id) && !activeUserIds.has(id)
   );
 
-  const currentMinutes = getNowClockMinutesUtc();
   let absentCount = 0;
   const defaultShifts = await shiftsRepo.getShifts(companyId);
-  const defaultShift = defaultShifts && defaultShifts.length > 0 ? defaultShifts[0] : null;
+  const defaultShift =
+    defaultShifts && defaultShifts.length > 0
+      ? defaultShifts.find(shiftRowActive) ?? defaultShifts[0]
+      : null;
 
   for (const userId of notOnLeave) {
-    const user = await usersRepo.getUserById(userId);
-    let shift = null;
-    if (user?.shift_id) {
-      shift = await shiftsRepo.getShiftById(user.shift_id, companyId);
-    }
-    if (!shift && defaultShift) {
-      shift = defaultShift;
-    }
+    const shift = await resolveUserShift(userId, companyId, defaultShift);
     if (!shift) continue;
 
-    const shiftStartMinutes = timeToMinutes(shift.start_time);
-    if (shiftStartMinutes === null) continue;
+    const window = resolveShiftWindow({
+      anchorIso: nowIso,
+      businessTimeZone: businessTz,
+      overnightShiftsEnabled: overnightOn,
+      shift: toShiftWindowSource(shift),
+    });
 
-    const grace = shift.grace_minutes ?? 0;
-    if (currentMinutes > shiftStartMinutes + grace) {
+    if (shouldMarkAbsentNow(window, nowIso, businessTz)) {
       absentCount += 1;
     }
   }
@@ -180,11 +164,15 @@ export async function getMyAttendance(
   week_minutes: number;
   month_minutes: number;
 }>> {
+  const policy = await companyPolicyService.getPolicy(companyId);
+  const businessTz = policy.business_timezone;
+  const now = new Date();
+
   const { rows: sessions } = await repo.getUserSessions(userId, companyId);
 
-  const todayStart = startOfTodayUtc();
-  const weekStart = startOfWeekUtc();
-  const monthStart = startOfMonthUtc();
+  const todayStart = new Date(businessTodayUtcRange(now, businessTz).startIso);
+  const weekStart = new Date(businessWeekStartUtcIso(now, businessTz));
+  const monthStart = new Date(businessMonthStartUtcIso(now, businessTz));
 
   let todayMinutes = 0;
   let weekMinutes = 0;
@@ -223,7 +211,8 @@ export async function getMonthlyStats(
   total_minutes: number;
   average_minutes_per_day: number;
 }>> {
-  const sessions = await repo.getMonthSessions(companyId, scopedUserIds);
+  const policy = await companyPolicyService.getPolicy(companyId);
+  const sessions = await repo.getMonthSessions(companyId, scopedUserIds, policy.business_timezone);
 
   let totalSessions = 0;
   let totalMinutes = 0;
@@ -235,8 +224,7 @@ export async function getMonthlyStats(
       totalMinutes += s.duration_minutes;
     }
     if (s.check_in) {
-      const d = new Date(s.check_in);
-      const dayKey = d.toISOString().slice(0, 10);
+      const dayKey = calendarYmdInTimeZone(new Date(s.check_in), policy.business_timezone).iso;
       daysWithSessions.add(dayKey);
     }
   }

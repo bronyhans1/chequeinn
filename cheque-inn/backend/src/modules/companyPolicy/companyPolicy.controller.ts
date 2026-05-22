@@ -146,6 +146,25 @@ export async function updatePolicy(
       }
     }
 
+    let overnight_shifts_enabled: unknown = undefined;
+    if (body.overnight_shifts_enabled !== undefined) {
+      if (!isAdmin(req)) {
+        res.status(403).json({
+          success: false,
+          error: "Only company admin can enable or disable overnight shifts.",
+        });
+        return;
+      }
+      if (typeof body.overnight_shifts_enabled !== "boolean") {
+        res.status(400).json({
+          success: false,
+          error: "overnight_shifts_enabled must be a boolean",
+        });
+        return;
+      }
+      overnight_shifts_enabled = body.overnight_shifts_enabled;
+    }
+
     let business_timezone: unknown = undefined;
     if (body.business_timezone !== undefined) {
       if (!isAdmin(req)) {
@@ -234,6 +253,7 @@ export async function updatePolicy(
       lateness_tracking_enabled: lateness_tracking_enabled as boolean | undefined,
       late_pay_deduction_enabled: late_pay_deduction_enabled as boolean | undefined,
       payroll_enabled: payroll_enabled as boolean | undefined,
+      overnight_shifts_enabled: overnight_shifts_enabled as boolean | undefined,
       business_timezone: business_timezone as string | undefined,
       attendance_day_classification_enabled: attendance_day_classification_enabled as boolean | undefined,
       minimum_minutes_for_counted_day:

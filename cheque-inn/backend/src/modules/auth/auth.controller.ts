@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../config/supabase";
 import { normalizeRoles } from "../../config/roles";
 import { AuthenticatedRequest, MeResponse } from "../../types/auth";
 import { normalizeAccountStatus } from "../../lib/accountStatus";
-import { normalizeBusinessTimeZone } from "../../lib/businessCalendar";
+import { DEFAULT_BUSINESS_TIMEZONE, normalizeBusinessTimeZone } from "../../lib/businessCalendar";
 import { roleNamesFromUserRolesJoin } from "../../lib/supabaseRoleJoin";
 
 
@@ -12,7 +12,7 @@ const EMPTY_COMPANY: MeResponse["company"] = {
   name: "",
   branch_name: null,
   payroll_enabled: true,
-  business_timezone: "UTC",
+  business_timezone: DEFAULT_BUSINESS_TIMEZONE,
   status: "active",
 };
 
@@ -129,7 +129,7 @@ async function buildMeResponse(
         name: row.name ?? "",
         branch_name: legacyBranchName,
         payroll_enabled: true,
-        business_timezone: "UTC",
+        business_timezone: DEFAULT_BUSINESS_TIMEZONE,
         status: normalizeAccountStatus(row.status),
       };
     }
@@ -163,7 +163,7 @@ async function buildMeResponse(
   }
 
   let payrollEnabled = true;
-  let businessTimezone = "UTC";
+  let businessTimezone = DEFAULT_BUSINESS_TIMEZONE;
   if (user.company_id) {
     const { data: pol } = await supabaseAdmin
       .from("company_policies")
@@ -173,9 +173,9 @@ async function buildMeResponse(
     if (pol && typeof (pol as { payroll_enabled?: boolean }).payroll_enabled === "boolean") {
       payrollEnabled = (pol as { payroll_enabled: boolean }).payroll_enabled;
     }
-    if (pol && typeof (pol as { business_timezone?: string | null }).business_timezone === "string") {
+    if (pol) {
       businessTimezone = normalizeBusinessTimeZone(
-        (pol as { business_timezone: string }).business_timezone
+        (pol as { business_timezone?: string | null }).business_timezone
       );
     }
   }

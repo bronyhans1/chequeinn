@@ -1,4 +1,9 @@
 import * as repo from "./leave.repository";
+import {
+  notifyLeaveApproved,
+  notifyLeaveRejected,
+  notifyLeaveSubmitted,
+} from "../notifications/operationalNotifications.service";
 
 export interface RequestLeaveInput {
   start_date: string;
@@ -78,6 +83,15 @@ export async function requestLeave(
     status: "pending",
   });
 
+  notifyLeaveSubmitted({
+    companyId,
+    employeeUserId: userId,
+    leaveId: request.id,
+    startDate: startDateStr,
+    endDate: endDateStr,
+    leaveType,
+  }).catch((err) => console.warn("notifyLeaveSubmitted", err));
+
   return { data: request };
 }
 
@@ -112,6 +126,13 @@ export async function approveLeave(
       companyId,
       approverId
     );
+    notifyLeaveApproved({
+      companyId,
+      employeeUserId: leave.user_id,
+      leaveId,
+      startDate: leave.start_date.slice(0, 10),
+      endDate: leave.end_date.slice(0, 10),
+    }).catch((err) => console.warn("notifyLeaveApproved", err));
     return { data: updated };
   } catch (err) {
     const e = err as Error & { code?: string };
@@ -171,6 +192,14 @@ export async function rejectLeave(
     return { data: null, error: "Failed to update leave request" };
   }
 
+  notifyLeaveRejected({
+    companyId,
+    employeeUserId: leave.user_id,
+    leaveId,
+    startDate: leave.start_date.slice(0, 10),
+    endDate: leave.end_date.slice(0, 10),
+  }).catch((err) => console.warn("notifyLeaveRejected", err));
+
   return { data: updated };
 }
 
@@ -190,9 +219,10 @@ export async function reviewLeave(
 }
 
 export async function getMyLeaveRequests(
-  userId: string
+  userId: string,
+  companyId: string
 ): Promise<repo.LeaveRequestRecord[]> {
-  return repo.getUserLeaveRequests(userId);
+  return repo.getUserLeaveRequests(userId, companyId);
 }
 
 export async function getCompanyLeaveRequests(

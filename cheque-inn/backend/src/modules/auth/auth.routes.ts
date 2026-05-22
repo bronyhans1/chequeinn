@@ -6,9 +6,21 @@ import { createRateLimit } from "../../middleware/rateLimit.middleware";
 
 const router = Router();
 
-// GET /api/auth/me
-router.get("/me", authMiddleware, enforceAccountNotBlocked, getProfile);
-router.patch("/profile", authMiddleware, enforceAccountNotBlocked, updateMyProfile);
+const profileReadLimiter = createRateLimit({
+  keyPrefix: "auth:me",
+  windowMs: 60_000,
+  max: 120,
+});
+
+// GET /api/auth/me — generous limit for mobile focus/reconnect refresh
+router.get("/me", authMiddleware, profileReadLimiter, enforceAccountNotBlocked, getProfile);
+router.patch(
+  "/profile",
+  authMiddleware,
+  createRateLimit({ keyPrefix: "auth:profile-patch", windowMs: 60_000, max: 30 }),
+  enforceAccountNotBlocked,
+  updateMyProfile
+);
 router.post(
   "/password-changed",
   authMiddleware,

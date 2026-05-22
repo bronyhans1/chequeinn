@@ -1,5 +1,12 @@
 import { supabaseAdmin } from "../../config/supabase";
 import { WorkSessionStatus } from "../../constants/workSessionStatus";
+import {
+  businessMonthStartUtcIso,
+  businessTodayUtcRange,
+  calendarYmdInTimeZone,
+  normalizeBusinessTimeZone,
+} from "../../lib/businessCalendar";
+import { postgrestOrFilterForAttendanceOnBusinessDay } from "../../lib/sessionAttendanceQuery";
 
 export interface WorkSessionRow {
   id: string;
@@ -17,33 +24,15 @@ export interface WorkSessionRow {
   department_id?: string | null;
 }
 
-function getTodayRangeUtc(): { start: string; end: string } {
-  const now = new Date();
-  const start = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-      0
-    )
-  );
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-  };
+function getTodayRangeForBusinessZone(businessTimeZone?: string | null): { start: string; end: string } {
+  const tz = normalizeBusinessTimeZone(businessTimeZone);
+  const { startIso, endIso } = businessTodayUtcRange(new Date(), tz);
+  return { start: startIso, end: endIso };
 }
 
-function getMonthStartUtc(): string {
-  const now = new Date();
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
-  );
-  return start.toISOString();
+function getMonthStartForBusinessZone(businessTimeZone?: string | null): string {
+  const tz = normalizeBusinessTimeZone(businessTimeZone);
+  return businessMonthStartUtcIso(new Date(), tz);
 }
 
 /** `undefined` = all company users; `[]` = none; else restrict to these user ids (manager/HR branch). */
@@ -59,19 +48,21 @@ function applySessionUserScope<T extends { in: (col: string, vals: string[]) => 
 
 export async function getTodaySessions(
   companyId: string,
-  scopedUserIds?: ScopedUserIds
+  scopedUserIds?: ScopedUserIds,
+  businessTimeZone?: string | null
 ): Promise<WorkSessionRow[]> {
   if (scopedUserIds !== undefined && scopedUserIds.length === 0) {
     return [];
   }
-  const { start, end } = getTodayRangeUtc();
+  const tz = normalizeBusinessTimeZone(businessTimeZone);
+  const { start, end } = getTodayRangeForBusinessZone(businessTimeZone);
+  const todayYmd = calendarYmdInTimeZone(new Date(), tz).iso;
 
   let q = supabaseAdmin
     .from("work_sessions")
     .select("*")
     .eq("company_id", companyId)
-    .gte("check_in", start)
-    .lt("check_in", end);
+    .or(postgrestOrFilterForAttendanceOnBusinessDay({ todayYmd, startIso: start, endIso: end }));
 
   q = applySessionUserScope(q, scopedUserIds);
 
@@ -114,12 +105,13 @@ export async function getUserSessions(
 
 export async function getMonthSessions(
   companyId: string,
-  scopedUserIds?: ScopedUserIds
+  scopedUserIds?: ScopedUserIds,
+  businessTimeZone?: string | null
 ): Promise<WorkSessionRow[]> {
   if (scopedUserIds !== undefined && scopedUserIds.length === 0) {
     return [];
   }
-  const monthStart = getMonthStartUtc();
+  const monthStart = getMonthStartForBusinessZone(businessTimeZone);
 
   let q = supabaseAdmin
     .from("work_sessions")
@@ -137,9 +129,10 @@ export async function getMonthSessions(
 
 export async function getUserMonthSessions(
   userId: string,
-  companyId: string
+  companyId: string,
+  businessTimeZone?: string | null
 ): Promise<WorkSessionRow[]> {
-  const monthStart = getMonthStartUtc();
+  const monthStart = getMonthStartForBusinessZone(businessTimeZone);
 
   const { data, error } = await supabaseAdmin
     .from("work_sessions")
@@ -183,9 +176,12 @@ export async function getActiveSessions(
  */
 export async function getUsersWithoutSessionToday(
   companyId: string,
-  scopedUserIds?: ScopedUserIds
+  scopedUserIds?: ScopedUserIds,
+  businessTimeZone?: string | null
 ): Promise<string[]> {
-  const { start, end } = getTodayRangeUtc();
+  const tz = normalizeBusinessTimeZone(businessTimeZone);
+  const { start, end } = getTodayRangeForBusinessZone(businessTimeZone);
+  const todayYmd = calendarYmdInTimeZone(new Date(), tz).iso;
 
   let allUserIds: Set<string>;
   if (scopedUserIds !== undefined) {
@@ -206,8 +202,7 @@ export async function getUsersWithoutSessionToday(
     .from("work_sessions")
     .select("user_id")
     .eq("company_id", companyId)
-    .gte("check_in", start)
-    .lt("check_in", end);
+    .or(postgrestOrFilterForAttendanceOnBusinessDay({ todayYmd, startIso: start, endIso: end }));
 
   if (scopedUserIds !== undefined && scopedUserIds.length > 0) {
     sq = sq.in("user_id", scopedUserIds);
