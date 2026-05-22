@@ -1,21 +1,11 @@
 import { Response, NextFunction } from "express";
 import { supabaseAdmin } from "../config/supabase";
 import { normalizeRoles } from "../config/roles";
-import { AuthenticatedRequest } from "../types/auth";
+import type { ContextRequest, RequestContext } from "../types/auth";
 import { evaluateAccessForRequester, normalizeAccountStatus } from "../lib/accountStatus";
 import { roleNamesFromUserRolesJoin } from "../lib/supabaseRoleJoin";
 
-export interface RequestContext {
-  userId: string;
-  companyId: string | null;
-  /** Set for company users (Phase 1+); used for manager/HR branch scoping. */
-  branchId: string | null;
-  roles: string[];
-}
-
-export interface ContextRequest extends AuthenticatedRequest {
-  context?: RequestContext;
-}
+export type { ContextRequest, RequestContext } from "../types/auth";
 
 export const contextMiddleware = async (
   req: ContextRequest,

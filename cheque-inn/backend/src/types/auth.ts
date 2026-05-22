@@ -1,10 +1,26 @@
 import { Request } from "express";
 
+export interface AuthenticatedUser {
+  id: string;
+  email?: string;
+}
+
+/** Set by `contextMiddleware` after auth. */
+export interface RequestContext {
+  userId: string;
+  companyId: string | null;
+  branchId: string | null;
+  roles: string[];
+}
+
+/** After `authMiddleware`; includes Supabase user on the request. */
 export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email?: string;
-  };
+  user?: AuthenticatedUser;
+}
+
+/** After `contextMiddleware`; includes tenant/platform context. */
+export interface ContextRequest extends AuthenticatedRequest {
+  context?: RequestContext;
 }
 
 export interface MeResponse {
@@ -42,5 +58,3 @@ export interface MeResponse {
   branch: { id: string; name: string } | null;
   roles: string[];
 }
-
-

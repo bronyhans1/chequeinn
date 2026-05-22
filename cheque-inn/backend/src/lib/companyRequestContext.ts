@@ -1,4 +1,4 @@
-import type { ContextRequest, RequestContext } from "../middleware/context.middleware";
+import type { ContextRequest, RequestContext } from "../types/auth";
 
 /** Context after `requireCompanyContext` middleware; `companyId` is always set. */
 export type CompanyRequestContext = RequestContext & { companyId: string };
