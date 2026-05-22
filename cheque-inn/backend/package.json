@@ -1,16 +1,15 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "",
+  "name": "cheque-inn-api",
+  "version": "2.0.0",
+  "description": "Cheque-Inn V2 API — workforce, attendance, payroll, notifications",
   "main": "index.js",
   "scripts": {
-  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-  "build": "tsc",
-  "start": "node dist/server.js",
-  "test": "jest --passWithNoTests",
-  "test:attendance": "jest --testPathPattern=attendance|earlyLeave",
-  "test:scope": "jest --testPathPattern=branchScope.regression"
-
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "jest --passWithNoTests",
+    "test:attendance": "jest --testPathPattern=attendance|earlyLeave",
+    "test:scope": "jest --testPathPattern=branchScope.regression"
   },
   "keywords": [],
   "author": "",
@@ -22,15 +21,19 @@
     "dotenv": "^17.3.1",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.0.0",
+    "nodemailer": "^8.0.7",
     "pdfkit": "^0.17.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.6",
+    "@types/helmet": "^0.0.48",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.3.3",
+    "@types/nodemailer": "^8.0.0",
     "@types/pdfkit": "^0.17.5",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.6",
