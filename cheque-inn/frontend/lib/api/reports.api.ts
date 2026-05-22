@@ -11,6 +11,7 @@ export interface AttendanceReportRow {
   department_name: string;
   check_in: string | null;
   check_out: string | null;
+  attendance_date: string | null;
   status: string;
   duration_minutes: number | null;
   total_hours: number | null;

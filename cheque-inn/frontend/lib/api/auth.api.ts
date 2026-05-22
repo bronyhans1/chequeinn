@@ -2,6 +2,7 @@ import { apiClient, ApiClientError } from "./client";
 import type { ApiResponse } from "@/lib/types/api";
 import type { AuthUser } from "@/lib/types/auth";
 import { normalizeRolesForApp } from "@/lib/auth/roles";
+import { normalizeBusinessTimeZone } from "@/lib/utils/businessDateTime";
 
 /** Backend GET /api/auth/me returns this shape (unwrapped). */
 export interface MeResponse {
@@ -26,6 +27,7 @@ export interface MeResponse {
     name: string;
     branch_name?: string | null;
     payroll_enabled?: boolean;
+    business_timezone?: string | null;
     status?: "active" | "inactive" | "suspended";
   };
   branch: { id: string; name: string } | null;
@@ -112,6 +114,9 @@ function mapMeToAuthUser(me: MeResponse): ApiResponse<AuthUser> {
       department: me.department ?? null,
       companyName: me.company?.name ?? "",
       payrollEnabled: me.company?.payroll_enabled !== false,
+      businessTimeZone: normalizeBusinessTimeZone(
+        typeof me.company?.business_timezone === "string" ? me.company.business_timezone : null
+      ),
       accountStatus: me.status ?? "active",
       companyAccountStatus: me.company?.status ?? "active",
       profileCompletion: {

@@ -15,6 +15,8 @@ export interface CompanyPolicy {
   payroll_enabled?: boolean;
   /** IANA timezone for earnings “today” (default UTC). */
   business_timezone?: string;
+  /** When true, cross-midnight shift definitions are allowed (Sprint 2+). */
+  overnight_shifts_enabled?: boolean;
   attendance_day_classification_enabled?: boolean;
   minimum_minutes_for_counted_day?: number;
   full_day_minutes_threshold?: number;
@@ -34,6 +36,7 @@ export interface UpdatePolicyInput {
   late_pay_deduction_enabled?: boolean;
   payroll_enabled?: boolean;
   business_timezone?: string;
+  overnight_shifts_enabled?: boolean;
   attendance_day_classification_enabled?: boolean;
   minimum_minutes_for_counted_day?: number;
   full_day_minutes_threshold?: number;

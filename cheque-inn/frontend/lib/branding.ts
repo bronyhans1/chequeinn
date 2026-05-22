@@ -1,9 +1,10 @@
-import pkg from "../package.json";
+import { RELEASE, VERSION_LABEL } from "./release";
 
 export const BRAND = {
-  appName: "Cheque-Inn",
+  appName: RELEASE.productName,
   supportEmail: "support@chequeinn.com",
-  version: typeof pkg.version === "string" ? pkg.version : "0.0.0",
+  version: RELEASE.version,
+  versionLabel: VERSION_LABEL,
 } as const;
 
 /** Relative routes on the web app; mobile opens absolute URLs from `LEGAL_LINKS` in mobile branding. */

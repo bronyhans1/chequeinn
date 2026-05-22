@@ -19,6 +19,8 @@ export interface PayrollRecord {
   gross_before_late_deduction?: number | null;
   late_deduction_amount?: number | null;
   payroll_date: string;
+  /** Salary daily accrual day (YYYY-MM-DD); aligns with attendance ownership. */
+  earnings_date?: string | null;
   status?: string;
   record_type?: string;
 }

@@ -9,6 +9,8 @@ export interface Shift {
   start_time: string;
   end_time: string;
   grace_minutes: number | null;
+  spans_midnight?: boolean;
+  is_active?: boolean;
   created_at: string;
 }
 
@@ -24,6 +26,13 @@ export interface UpdateShiftInput {
   start_time?: string;
   end_time?: string;
   grace_minutes?: number;
+  is_active?: boolean;
+}
+
+export interface DeleteShiftResult {
+  success: boolean;
+  deactivated?: boolean;
+  deleted?: boolean;
 }
 
 /** GET /api/shifts — any authenticated. */
@@ -46,7 +55,9 @@ export async function updateShift(
   return apiClient.patch<Shift>(`/api/shifts/${id}`, input);
 }
 
-/** DELETE /api/shifts/:shiftId — admin/manager only. */
-export async function deleteShift(shiftId: string): Promise<ApiResponse<Shift | null>> {
-  return apiClient.delete<Shift | null>(`/api/shifts/${shiftId}`);
+/** DELETE /api/shifts/:shiftId — admin/manager only; may deactivate if sessions exist. */
+export async function deleteShift(
+  shiftId: string
+): Promise<ApiResponse<DeleteShiftResult | null>> {
+  return apiClient.delete<DeleteShiftResult | null>(`/api/shifts/${shiftId}`);
 }

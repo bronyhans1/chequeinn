@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import * as authApi from "@/lib/api/auth.api";
 import { isApiError } from "@/lib/types/api";
 import { supabase } from "@/lib/supabase";
+import { VERSION_LABEL } from "@/lib/release";
 
 interface Props {
   open: boolean;
@@ -339,6 +340,9 @@ export function ProfileDrawer({ open, onClose }: Props) {
           >
             {saving ? "Saving…" : "Save profile"}
           </button>
+          <p className="pt-2 text-center text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {VERSION_LABEL}
+          </p>
         </div>
       </aside>
     </>

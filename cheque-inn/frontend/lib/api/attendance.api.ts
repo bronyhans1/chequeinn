@@ -96,6 +96,8 @@ export interface SessionHistoryItem {
   manual_check_in_reason?: string | null;
   manual_check_out?: boolean | null;
   manual_check_out_reason?: string | null;
+  attendance_date?: string | null;
+  overnight_session?: boolean;
 }
 
 export interface WorkSessionDto {

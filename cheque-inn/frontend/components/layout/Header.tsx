@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { isPlatformAdmin } from "@/lib/auth/roles";
 import { ProfileDrawer } from "@/components/profile/ProfileDrawer";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function Header() {
   const router = useRouter();
@@ -20,6 +22,8 @@ export function Header() {
     logout();
     router.replace("/login");
   }
+
+  const showTenantNotifications = !!user && !isPlatformAdmin(user.roles);
 
   return (
     <>
@@ -43,6 +47,7 @@ export function Header() {
         <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
         {user && (
           <>
+            {showTenantNotifications ? <NotificationBell /> : null}
               <button
                 type="button"
                 onClick={() => setProfileOpen(true)}

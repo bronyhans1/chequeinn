@@ -24,6 +24,8 @@ export interface AuthUser {
   companyName: string;
   /** Company payroll feature flag from GET /api/auth/me (default true). */
   payrollEnabled: boolean;
+  /** IANA zone from `company_policies.business_timezone` (earnings / display). */
+  businessTimeZone: string;
   /** `users.status` from GET /api/auth/me. */
   accountStatus: "active" | "inactive" | "suspended";
   /** `companies.status` from GET /api/auth/me. */
