@@ -3,11 +3,14 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "module": "commonjs",
+    "moduleResolution": "node",
     "target": "es2020",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
   },
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "src/**/__tests__/**"]
 }
