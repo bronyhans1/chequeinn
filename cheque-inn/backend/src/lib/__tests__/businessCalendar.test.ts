@@ -1,13 +1,14 @@
 import {
   calendarYmdInTimeZone,
+  DEFAULT_BUSINESS_TIMEZONE,
   normalizeBusinessTimeZone,
   yearMonthTodayInTimeZone,
 } from "../businessCalendar";
 
 describe("businessCalendar", () => {
   test("normalizeBusinessTimeZone falls back on garbage", () => {
-    expect(normalizeBusinessTimeZone("Not/AZone")).toBe("UTC");
-    expect(normalizeBusinessTimeZone(null)).toBe("UTC");
+    expect(normalizeBusinessTimeZone("Not/AZone")).toBe(DEFAULT_BUSINESS_TIMEZONE);
+    expect(normalizeBusinessTimeZone(null)).toBe(DEFAULT_BUSINESS_TIMEZONE);
   });
 
   test("calendarYmdInTimeZone uses zone offset vs UTC", () => {

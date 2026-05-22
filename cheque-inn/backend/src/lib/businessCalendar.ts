@@ -2,16 +2,19 @@
 
 export type CalendarYmd = { year: number; month: number; day: number; iso: string };
 
+/** Official product default when company policy has no zone configured. */
+export const DEFAULT_BUSINESS_TIMEZONE = "Africa/Accra";
+
 /**
- * Validate IANA timezone; fall back to UTC when invalid or empty.
+ * Validate IANA timezone; fall back to {@link DEFAULT_BUSINESS_TIMEZONE} when invalid or empty.
  */
 export function normalizeBusinessTimeZone(raw: string | null | undefined): string {
-  const v = (raw ?? "UTC").trim() || "UTC";
+  const v = (raw ?? DEFAULT_BUSINESS_TIMEZONE).trim() || DEFAULT_BUSINESS_TIMEZONE;
   try {
     Intl.DateTimeFormat("en-US", { timeZone: v });
     return v;
   } catch {
-    return "UTC";
+    return DEFAULT_BUSINESS_TIMEZONE;
   }
 }
 
@@ -137,4 +140,29 @@ export function utcHalfOpenRangeForCalendarDateInZone(
 export function businessTodayUtcRange(now: Date, timeZone: string): { startIso: string; endIso: string } {
   const { iso } = calendarYmdInTimeZone(now, timeZone);
   return utcHalfOpenRangeForCalendarDateInZone(iso, timeZone);
+}
+
+/** UTC instant at the start of the current business calendar month in `timeZone`. */
+export function businessMonthStartUtcIso(now: Date, timeZone: string): string {
+  const cal = calendarYmdInTimeZone(now, timeZone);
+  const ymd = `${cal.year}-${String(cal.month).padStart(2, "0")}-01`;
+  return utcHalfOpenRangeForCalendarDateInZone(ymd, timeZone).startIso;
+}
+
+function weekdayIndexInZone(now: Date, timeZone: string): number {
+  const tz = normalizeBusinessTimeZone(timeZone);
+  const wd = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(now);
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[wd] ?? 0;
+}
+
+/** UTC instant at Monday 00:00 of the current business week (Mon–Sun) in `timeZone`. */
+export function businessWeekStartUtcIso(now: Date, timeZone: string): string {
+  const tz = normalizeBusinessTimeZone(timeZone);
+  const cal = calendarYmdInTimeZone(now, tz);
+  const diffToMonday = (weekdayIndexInZone(now, tz) + 6) % 7;
+  const anchor = new Date(Date.UTC(cal.year, cal.month - 1, cal.day, 12, 0, 0, 0));
+  anchor.setUTCDate(anchor.getUTCDate() - diffToMonday);
+  const mondayYmd = `${anchor.getUTCFullYear()}-${String(anchor.getUTCMonth() + 1).padStart(2, "0")}-${String(anchor.getUTCDate()).padStart(2, "0")}`;
+  return utcHalfOpenRangeForCalendarDateInZone(mondayYmd, tz).startIso;
 }

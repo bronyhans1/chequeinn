@@ -13,3 +13,10 @@ export const companyApiStack = [
   contextMiddleware,
   requireCompanyContext,
 ];
+
+/** Platform admin routes: JWT + account status + roles; no company tenant context. */
+export const platformAdminStack = [
+  authMiddleware,
+  enforceAccountNotBlocked,
+  contextMiddleware,
+];

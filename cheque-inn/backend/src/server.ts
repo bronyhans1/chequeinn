@@ -1,7 +1,11 @@
 import app from "./app";
+import { ENV } from "./config/env";
+import { RELEASE } from "./config/release";
+import { startInternalJobsIfEnabled } from "./jobs/internalJobs";
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(ENV.PORT, () => {
+  console.log(
+    `[server] Cheque-Inn API v${RELEASE.version} (${RELEASE.phase}) listening on port ${ENV.PORT} (${ENV.NODE_ENV}) trust_proxy=${ENV.TRUST_PROXY}`
+  );
+  startInternalJobsIfEnabled();
 });

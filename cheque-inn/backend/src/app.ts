@@ -1,5 +1,9 @@
-import express from "express";
-import cors from "cors";
+import express, { ErrorRequestHandler } from "express";
+import { ENV } from "./config/env";
+import { releaseInfoPayload } from "./config/release";
+import { buildCorsMiddleware } from "./middleware/cors.middleware";
+import { buildHelmetMiddleware } from "./middleware/helmet.middleware";
+import { requestLogMiddleware } from "./middleware/requestLog.middleware";
 import { supabaseAdmin } from "./config/supabase";
 import { authMiddleware } from "./middleware/auth.middleware";
 import { enforceAccountNotBlocked } from "./middleware/accountAccess.middleware";
@@ -25,66 +29,81 @@ import platformRoutes from "./modules/platform/platform.routes";
 import branchesRoutes from "./modules/branches/branches.routes";
 import reportsRoutes from "./modules/reports/reports.routes";
 import attendanceDayOverridesRoutes from "./modules/attendanceDayOverrides/attendanceDayOverrides.routes";
+import notificationsRoutes from "./modules/notifications/notifications.routes";
+import internalRoutes from "./modules/internal/internal.routes";
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+if (ENV.TRUST_PROXY) {
+  app.set("trust proxy", 1);
+}
+
+for (const mw of buildHelmetMiddleware()) {
+  app.use(mw);
+}
+app.use(buildCorsMiddleware());
+app.use(requestLogMiddleware);
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", async (req, res) => {
-  const { data, error } = await supabaseAdmin
-    .from("roles")
-    .select("*")
-    .limit(1);
+  const { error } = await supabaseAdmin.from("roles").select("*").limit(1);
 
+  const release = releaseInfoPayload();
   if (error) {
     return res.json({
       status: "Backend running 🚀",
       database: "Connection failed ❌",
       error: error.message,
+      ...release,
     });
   }
 
   return res.json({
     status: "Backend running 🚀",
     database: "Connected to Supabase ✅",
+    ...release,
   });
 });
 
 app.get("/api/health", async (req, res) => {
-  const { error } = await supabaseAdmin
-    .from("roles")
-    .select("*")
-    .limit(1);
+  const { error } = await supabaseAdmin.from("roles").select("*").limit(1);
+  const release = releaseInfoPayload();
 
   if (error) {
     return res.json({
       status: "Backend running 🚀",
       database: "Connection failed ❌",
       error: error.message,
+      ...release,
     });
   }
 
   return res.json({
     status: "Backend running 🚀",
     database: "Connected to Supabase ✅",
+    ...release,
   });
 });
 
-app.get(
-  "/protected",
-  authMiddleware,
-  enforceAccountNotBlocked,
-  contextMiddleware,
-  (req, res) => {
-    res.json({
-      message: "Full context loaded ✅",
-      context: (req as any).context,
-    });
-  }
-);
+app.get("/api/version", (_req, res) => {
+  res.json({ success: true, data: releaseInfoPayload() });
+});
 
-// attach module routes
+if (!ENV.isProduction) {
+  app.get(
+    "/protected",
+    authMiddleware,
+    enforceAccountNotBlocked,
+    contextMiddleware,
+    (req, res) => {
+      res.json({
+        message: "Full context loaded ✅",
+        context: (req as { context?: unknown }).context,
+      });
+    }
+  );
+}
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/sessions", sessionsRoutes);
@@ -106,5 +125,20 @@ app.use("/api/payroll", payrollExcelExportRoutes);
 app.use("/api/payroll", payrollApprovalRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/platform", platformRoutes);
+app.use("/api/notifications", notificationsRoutes);
+app.use("/api/internal", internalRoutes);
+
+const corsErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  if (err && typeof err === "object" && "message" in err) {
+    const msg = String((err as Error).message);
+    if (msg.startsWith("CORS:")) {
+      res.status(403).json({ success: false, error: "Origin not allowed" });
+      return;
+    }
+  }
+  next(err);
+};
+
+app.use(corsErrorHandler);
 
 export default app;

@@ -1,4 +1,5 @@
 import { RequestHandler } from "express";
+import { logOperationalEvent } from "./requestLog.middleware";
 
 interface LimiterOptions {
   windowMs: number;
@@ -52,6 +53,11 @@ export function createRateLimit(options: LimiterOptions): RequestHandler {
         1,
         Math.ceil((existing.resetAt - now) / 1000)
       );
+      logOperationalEvent("security", "rate_limit_exceeded", {
+        prefix: options.keyPrefix,
+        actor: String(actor).slice(0, 36),
+        path: req.originalUrl?.split("?")[0] ?? req.path,
+      });
       res.setHeader("Retry-After", String(retryAfterSeconds));
       res.status(429).json({
         success: false,
