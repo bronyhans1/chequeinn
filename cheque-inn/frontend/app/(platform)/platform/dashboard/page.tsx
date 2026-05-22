@@ -7,28 +7,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import * as platformApi from "@/lib/api/platform.api";
 import { isApiError } from "@/lib/types/api";
-
-function formatFriendlyDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const isYesterday = d.toDateString() === yesterday.toDateString();
-
-  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  if (sameDay) return `Today at ${time}`;
-  if (isYesterday) return `Yesterday at ${time}`;
-  return d.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+import { formatBusinessFriendlyDateTime } from "@/lib/utils/businessDateTime";
 
 function parseAuditMetadata(metadata: unknown): Record<string, unknown> | null {
   if (metadata === null || metadata === undefined) return null;
@@ -193,7 +172,7 @@ export default function PlatformDashboardPage() {
                     </p>
                   </div>
                   <p className="whitespace-nowrap text-xs text-theme-muted">
-                    {formatFriendlyDateTime(a.created_at)}
+                    {formatBusinessFriendlyDateTime(a.created_at)}
                   </p>
                 </div>
               </div>

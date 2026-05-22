@@ -5,14 +5,14 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 import "./globals.css";
 
 export const metadata = {
-  title: "Cheque-Inn — Smart Workforce Management",
+  title: "Cheque-Inn — Workforce Management (V2)",
   description:
-    "Manage attendance, payroll, and staff operations effortlessly. Built for modern teams.",
+    "Cheque-Inn V2: overnight-aware attendance, payroll, leave, and operational notifications for modern teams.",
 
   openGraph: {
-    title: "Cheque-Inn — Smart Workforce Management",
+    title: "Cheque-Inn — Workforce Management (V2)",
     description:
-      "Manage attendance, payroll, and staff operations effortlessly. Built for modern teams.",
+      "Cheque-Inn V2: overnight-aware attendance, payroll, leave, and operational notifications.",
     url: "https://chequeinn.com",
     siteName: "Cheque-Inn",
     images: [
@@ -27,9 +27,9 @@ export const metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Cheque-Inn — Smart Workforce Management",
+    title: "Cheque-Inn — Workforce Management (V2)",
     description:
-      "Manage attendance, payroll, and staff operations effortlessly.",
+      "Cheque-Inn V2: overnight-aware attendance, payroll, and workforce operations.",
     images: ["/og-image.png"],
   },
   icons: {

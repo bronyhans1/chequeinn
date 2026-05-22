@@ -18,6 +18,7 @@ import * as leaveBalancesApi from "@/lib/api/leaveBalances.api";
 import { isApiError } from "@/lib/types/api";
 import type { CreatableCompanyRole, UserListItem } from "@/lib/api/users.api";
 import type { Shift } from "@/lib/api/shifts.api";
+import { filterShiftsForList } from "@/lib/utils/shiftDisplay";
 import type { BranchDto } from "@/lib/api/branches.api";
 import type { Department } from "@/lib/api/departments.api";
 import { hasRole, isBranchScopedCompanyUser } from "@/lib/auth/roles";
@@ -520,7 +521,7 @@ export default function EmployeesPage() {
             aria-label={`Assign shift for ${fullName(row)}`}
           >
             <option value="">No shift</option>
-            {shifts.map((s) => (
+            {filterShiftsForList(shifts, false).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} ({s.start_time}–{s.end_time})
               </option>

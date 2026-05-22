@@ -16,15 +16,11 @@ import { isApiError } from "@/lib/types/api";
 import { getCurrentMonthRange } from "@/lib/utils/date";
 import type { AuditLog } from "@/lib/api/audit.api";
 import { buildEmployeeDisplayById, presentAuditLog } from "@/lib/audit/auditPresentation";
-
-function formatDateTime(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
-}
+import { formatBusinessDateTime } from "@/lib/utils/businessDateTime";
 
 export default function AuditActivityPage() {
   const { user, isLoading } = useAuth();
+  const businessTz = user?.businessTimeZone ?? "Africa/Accra";
 
   const canViewAudit = hasRole(user?.roles, ADMIN_MANAGER_ROLES);
   const { start: defaultStart, end: defaultEnd } = getCurrentMonthRange();
@@ -106,7 +102,7 @@ export default function AuditActivityPage() {
     {
       key: "created_at",
       header: "Timestamp",
-      render: (row) => formatDateTime(row.created_at),
+      render: (row) => formatBusinessDateTime(row.created_at, businessTz),
     },
     {
       key: "action",

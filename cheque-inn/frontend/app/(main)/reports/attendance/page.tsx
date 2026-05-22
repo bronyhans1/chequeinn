@@ -19,18 +19,11 @@ import * as branchesApi from "@/lib/api/branches.api";
 import { isApiError } from "@/lib/types/api";
 import type { UserListItem } from "@/lib/api/users.api";
 import type { BranchDto } from "@/lib/api/branches.api";
-
-function formatDt(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
+import { formatBusinessDateTime } from "@/lib/utils/businessDateTime";
 
 export default function AttendanceReportPage() {
   const { user } = useAuth();
+  const businessTz = user?.businessTimeZone ?? "Africa/Accra";
   const allowed = canAccessManagerFeatures(user?.roles);
   const canFilterBranch = hasRole(user?.roles, ["admin"]);
 
@@ -146,8 +139,8 @@ export default function AttendanceReportPage() {
         </Link>
       </p>
       <p className="mb-4 text-sm text-theme-muted">
-        Session-level attendance for the selected period. Managers and HR see their branch only;
-        admins can filter by branch.
+        Session-level attendance for the selected period. Date range uses attendance ownership day
+        when set (overnight-safe). Managers and HR see their branch only; admins can filter by branch.
       </p>
 
       <Card title="Filters">
@@ -302,6 +295,7 @@ export default function AttendanceReportPage() {
                     <th className="py-2 pr-3">Employee</th>
                     <th className="py-2 pr-3">Branch</th>
                     <th className="py-2 pr-3">Department</th>
+                    <th className="py-2 pr-3">Attendance day</th>
                     <th className="py-2 pr-3">Check-in</th>
                     <th className="py-2 pr-3">Check-out</th>
                     <th className="py-2 pr-3">Status</th>
@@ -321,8 +315,11 @@ export default function AttendanceReportPage() {
                       </td>
                       <td className="py-2 pr-3">{r.branch_name || "—"}</td>
                       <td className="py-2 pr-3">{r.department_name}</td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{formatDt(r.check_in)}</td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{formatDt(r.check_out)}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {r.attendance_date ?? (r.check_in ? r.check_in.slice(0, 10) : "—")}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{formatBusinessDateTime(r.check_in, businessTz)}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{formatBusinessDateTime(r.check_out, businessTz)}</td>
                       <td className="py-2 pr-3">{r.status}</td>
                       <td className="py-2 pr-3">
                         {r.duration_minutes != null ? `${r.duration_minutes} min` : "—"}

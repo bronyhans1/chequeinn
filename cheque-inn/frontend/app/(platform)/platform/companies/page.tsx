@@ -12,6 +12,7 @@ import { isApiError } from "@/lib/types/api";
 import type { PlatformCompanyListItem, ProvisionCompanyData } from "@/lib/api/platform.api";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Modal } from "@/components/ui/Modal";
+import { formatBusinessDateTime } from "@/lib/utils/businessDateTime";
 
 export default function PlatformProvisionCompanyPage() {
   const { user } = useAuth();
@@ -410,7 +411,7 @@ export default function PlatformProvisionCompanyPage() {
                           {c.admin_emails?.length ? c.admin_emails.join(", ") : "—"}
                         </td>
                         <td className="py-2 pr-4" style={{ color: "var(--text-muted)" }}>
-                          {c.created_at ? new Date(c.created_at).toLocaleString() : "—"}
+                          {formatBusinessDateTime(c.created_at)}
                         </td>
                         <td className="py-2 pl-3 pr-0">
                           <div className="flex gap-2">
@@ -554,7 +555,7 @@ export default function PlatformProvisionCompanyPage() {
               <div className="rounded border p-3 sm:col-span-2" style={{ borderColor: "var(--border-soft)" }}>
                 <p className="text-xs uppercase" style={{ color: "var(--text-muted)" }}>Created</p>
                 <p className="mt-1 text-sm" style={{ color: "var(--text-primary)" }}>
-                  {detailTarget.created_at ? new Date(detailTarget.created_at).toLocaleString() : "—"}
+                  {formatBusinessDateTime(detailTarget.created_at)}
                 </p>
               </div>
             </div>

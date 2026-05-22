@@ -16,6 +16,7 @@ import type { SessionHistoryItem } from "@/lib/api/attendance.api";
 import type { UserListItem } from "@/lib/api/users.api";
 import { ManualAttendanceModal } from "@/components/attendance/ManualAttendanceModal";
 import { MANUAL_ATTENDANCE_REASONS } from "@/lib/attendance/manualAttendance";
+import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/utils/businessDateTime";
 
 function formatDurationMinutes(m: number | null): string {
   if (m === null || m < 0) return "—";
@@ -25,17 +26,6 @@ function formatDurationMinutes(m: number | null): string {
   return min ? `${h}h ${min}m` : `${h}h`;
 }
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
-}
 
 function statusBadge(status: string) {
   const s = status?.toUpperCase();
@@ -72,6 +62,7 @@ function manualColumnLabel(r: SessionHistoryItem): "Manual" | "Partial" | null {
 
 export default function AttendanceHistoryPage() {
   const { user } = useAuth();
+  const businessTz = user?.businessTimeZone ?? "Africa/Accra";
   const canViewCompany = hasRole(user?.roles, ["admin", "manager", "HR"]);
   const branchScoped = isBranchScopedCompanyUser(user?.roles);
 
@@ -137,9 +128,10 @@ export default function AttendanceHistoryPage() {
       <p className="mb-4 text-sm text-theme-muted">
         {canViewCompany
           ? branchScoped
-            ? "Sessions for employees in your office. Defaults to the last 90 days if no dates are set."
-            : "Company sessions across the selected period. Defaults to the last 90 days if no dates are set."
-          : "Your work sessions. Defaults to the last 90 days if no dates are set."}
+            ? "Sessions for employees in your office. Date filters use attendance ownership day when set (overnight-safe)."
+            : "Company sessions across the selected period. Date filters use attendance ownership day when set (overnight-safe)."
+          : "Your work sessions. Date filters use attendance ownership day when set."}{" "}
+        Defaults to the last 90 days if no dates are set.
       </p>
 
       <Card title="Filters">
@@ -233,7 +225,7 @@ export default function AttendanceHistoryPage() {
                 <thead>
                   <tr className="text-left text-xs font-medium uppercase tracking-wide text-theme-muted">
                     {canViewCompany ? <th className="pb-3 pr-4">Employee</th> : null}
-                    <th className="pb-3 pr-4">Date</th>
+                    <th className="pb-3 pr-4">Attendance day</th>
                     <th className="pb-3 pr-4">Check in</th>
                     <th className="pb-3 pr-4">Check out</th>
                     <th className="pb-3 pr-4">Duration</th>
@@ -257,17 +249,17 @@ export default function AttendanceHistoryPage() {
                         </td>
                       ) : null}
                       <td className="py-3 pr-4 whitespace-nowrap">
-                        {r.check_in
-                          ? new Date(r.check_in).toLocaleDateString(undefined, {
-                              weekday: "short",
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : "—"}
+                        {r.attendance_date
+                          ? r.attendance_date.slice(0, 10)
+                          : formatBusinessDateOnly(r.check_in, businessTz)}
+                        {r.overnight_session ? (
+                          <Badge variant="warning" className="ml-1">
+                            Overnight
+                          </Badge>
+                        ) : null}
                       </td>
-                      <td className="py-3 pr-4 whitespace-nowrap">{formatDateTime(r.check_in)}</td>
-                      <td className="py-3 pr-4 whitespace-nowrap">{formatDateTime(r.check_out)}</td>
+                      <td className="py-3 pr-4 whitespace-nowrap">{formatBusinessDateTime(r.check_in, businessTz)}</td>
+                      <td className="py-3 pr-4 whitespace-nowrap">{formatBusinessDateTime(r.check_out, businessTz)}</td>
                       <td className="py-3 pr-4">{formatDurationMinutes(r.duration_minutes)}</td>
                       <td className="py-3 pr-4">{r.branch_name ?? "—"}</td>
                       <td className="py-3 pr-4">{r.department_name ?? "—"}</td>

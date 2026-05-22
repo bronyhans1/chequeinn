@@ -13,8 +13,12 @@ import { getCurrentMonthRange } from "@/lib/utils/date";
 import * as attendanceApi from "@/lib/api/attendance.api";
 import { isApiError } from "@/lib/types/api";
 import type { LatenessSummaryEmployee } from "@/lib/api/attendance.api";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { formatBusinessDateTime } from "@/lib/utils/businessDateTime";
 
 export default function LatenessSummaryPage() {
+  const { user } = useAuth();
+  const businessTz = user?.businessTimeZone ?? "Africa/Accra";
   const { start: defaultStart, end: defaultEnd } = getCurrentMonthRange();
   const [start, setStart] = useState(defaultStart);
   const [end, setEnd] = useState(defaultEnd);
@@ -53,7 +57,11 @@ export default function LatenessSummaryPage() {
       header: "Repeated late",
       render: (row) => (row.repeated_late ? <Badge variant="warning">Yes</Badge> : "No"),
     },
-    { key: "latest_late_at", header: "Latest late at", render: (row) => row.latest_late_at ? new Date(row.latest_late_at).toLocaleString() : "—" },
+    {
+      key: "latest_late_at",
+      header: "Latest late at",
+      render: (row) => formatBusinessDateTime(row.latest_late_at, businessTz),
+    },
   ];
 
   return (

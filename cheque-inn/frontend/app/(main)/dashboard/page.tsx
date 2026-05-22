@@ -32,6 +32,10 @@ import {
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getCurrentMonthRange } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/formatCurrency";
+import {
+  formatBusinessDateTime,
+  formatBusinessFriendlyDateTime,
+} from "@/lib/utils/businessDateTime";
 
 function formatMinutes(m: number): string {
   if (m < 60) return `${m}m`;
@@ -40,28 +44,12 @@ function formatMinutes(m: number): string {
   return min ? `${h}h ${min}m` : `${h}h`;
 }
 
-function formatDateTime(value: string | null | undefined): string {
-  if (value == null || value === "") return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
+function formatDateTime(value: string | null | undefined, businessTimeZone: string): string {
+  return formatBusinessDateTime(value, businessTimeZone);
 }
 
-function formatFriendlyDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const isYesterday = d.toDateString() === yesterday.toDateString();
-
-  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  if (sameDay) return `Today at ${time}`;
-  if (isYesterday) return `Yesterday at ${time}`;
-  return d.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function formatFriendlyDateTime(value: string | null | undefined, businessTimeZone: string): string {
+  return formatBusinessFriendlyDateTime(value, businessTimeZone);
 }
 
 /** API may return PENDING / pending — normalize for comparisons. */
@@ -109,6 +97,7 @@ export default function DashboardPage() {
   const canViewCompanyPayroll = canAccessCompanyPayroll(user?.roles);
   const branchScoped = isBranchScopedCompanyUser(user?.roles);
   const payrollEnabled = user?.payrollEnabled !== false;
+  const businessTz = user?.businessTimeZone ?? "Africa/Accra";
 
   /** All hooks must run before any conditional return (Rules of Hooks). */
   const [overview, setOverview] = useState<TodayOverview | null>(null);
@@ -374,7 +363,7 @@ export default function DashboardPage() {
                         {s.user_id.slice(0, 8)}…
                       </span>
                       <span className="shrink-0 text-xs text-theme-muted">
-                        {formatDateTime(s.check_in)}
+                        {formatDateTime(s.check_in, businessTz)}
                       </span>
                     </li>
                   ))}
@@ -477,7 +466,7 @@ export default function DashboardPage() {
                           </p>
                         ) : null}
                         <p className="text-xs text-theme-muted">
-                          In: {formatDateTime(row.check_in)} · Out: {formatDateTime(row.check_out)}
+                          In: {formatDateTime(row.check_in, businessTz)} · Out: {formatDateTime(row.check_out, businessTz)}
                         </p>
                       </div>
                       {sessionStatusBadge(row.status)}
@@ -593,7 +582,7 @@ export default function DashboardPage() {
                             </p>
                             {view.detail ? <p className="text-xs text-theme-muted">{view.detail}</p> : null}
                           </div>
-                          <p className="whitespace-nowrap text-xs text-theme-muted">{formatFriendlyDateTime(l.created_at)}</p>
+                          <p className="whitespace-nowrap text-xs text-theme-muted">{formatFriendlyDateTime(l.created_at, businessTz)}</p>
                         </div>
                       </div>
                     );

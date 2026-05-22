@@ -8,11 +8,19 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { hasRole, ADMIN_MANAGER_ROLES } from "@/lib/auth/roles";
 import * as shiftsApi from "@/lib/api/shifts.api";
+import * as companyPolicyApi from "@/lib/api/companyPolicy.api";
 import { isApiError } from "@/lib/types/api";
 import type { Shift } from "@/lib/api/shifts.api";
+import {
+  clientValidateShiftTimes,
+  filterShiftsForList,
+  formatShiftTimeRange,
+  isOvernightWallClockSpan,
+} from "@/lib/utils/shiftDisplay";
 
 export default function ShiftsPage() {
   const { user } = useAuth();
@@ -33,6 +41,9 @@ export default function ShiftsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [overnightPolicyOn, setOvernightPolicyOn] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -45,6 +56,10 @@ export default function ShiftsPage() {
         return;
       }
       setShifts(res.data ?? []);
+      const policyRes = await companyPolicyApi.getPolicy();
+      if (!isApiError(policyRes) && policyRes.data) {
+        setOvernightPolicyOn(policyRes.data.overnight_shifts_enabled === true);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load shifts");
       setShifts([]);
@@ -52,6 +67,8 @@ export default function ShiftsPage() {
       setLoading(false);
     }
   }, []);
+
+  const visibleShifts = filterShiftsForList(shifts, showInactive);
 
   useEffect(() => {
     load();
@@ -86,6 +103,15 @@ export default function ShiftsPage() {
     const grace = parseInt(formGrace, 10);
     if (Number.isNaN(grace) || grace < 0) {
       setFormError("Grace minutes must be 0 or greater.");
+      return;
+    }
+    const timeErr = clientValidateShiftTimes({
+      start_time: formStart,
+      end_time: formEnd,
+      overnight_shifts_enabled: overnightPolicyOn,
+    });
+    if (timeErr) {
+      setFormError(timeErr);
       return;
     }
     setFormSubmitting(true);
@@ -123,6 +149,15 @@ export default function ShiftsPage() {
       setFormError("Grace minutes must be 0 or greater.");
       return;
     }
+    const timeErr = clientValidateShiftTimes({
+      start_time: formStart,
+      end_time: formEnd,
+      overnight_shifts_enabled: overnightPolicyOn,
+    });
+    if (timeErr) {
+      setFormError(timeErr);
+      return;
+    }
     setFormSubmitting(true);
     try {
       const res = await shiftsApi.updateShift(editShift.id, {
@@ -153,6 +188,11 @@ export default function ShiftsPage() {
         setError(res.error ?? "Failed to delete shift");
         return;
       }
+      if (res.data?.deactivated) {
+        setDeleteNotice(
+          `"${deleteShift.name}" was archived (deactivated) because it has attendance history.`
+        );
+      }
       setDeleteShift(null);
       await load();
     } catch (e) {
@@ -163,9 +203,35 @@ export default function ShiftsPage() {
   }
 
   const columns: { key: string; header: string; render?: (row: Shift) => React.ReactNode }[] = [
-    { key: "name", header: "Name" },
-    { key: "start_time", header: "Start" },
-    { key: "end_time", header: "End" },
+    {
+      key: "name",
+      header: "Name",
+      render: (row: Shift) => (
+        <span className={row.is_active === false ? "text-theme-muted line-through" : ""}>
+          {row.name}
+          {row.is_active === false ? (
+            <Badge variant="default" className="ml-2">
+              Inactive
+            </Badge>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      key: "schedule",
+      header: "Schedule",
+      render: (row: Shift) => formatShiftTimeRange(row),
+    },
+    {
+      key: "overnight",
+      header: "Type",
+      render: (row: Shift) =>
+        row.spans_midnight || isOvernightWallClockSpan(row.start_time, row.end_time) ? (
+          <Badge variant="warning">Overnight</Badge>
+        ) : (
+          <span className="text-theme-muted text-sm">Day</span>
+        ),
+    },
     {
       key: "grace_minutes",
       header: "Grace (min)",
@@ -217,10 +283,25 @@ export default function ShiftsPage() {
 
   return (
     <MainContent title="Shifts">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-2 max-w-2xl">
         <p className="text-sm text-theme-muted">
-          {shifts.length} shift{shifts.length !== 1 ? "s" : ""} in your company.
+          {visibleShifts.length} active shift{visibleShifts.length !== 1 ? "s" : ""} shown
+          {showInactive ? ` (${shifts.length} total including inactive).` : "."}
+          {overnightPolicyOn
+            ? " Overnight shifts (e.g. 22:00 → 06:00) are enabled in Settings."
+            : " Same-day shifts only unless overnight shifts are enabled in Settings."}
         </p>
+        <label className="flex items-center gap-2 text-sm text-theme-muted">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+            className="h-4 w-4 rounded border border-[color:var(--border-soft)]"
+          />
+          Show inactive shifts
+        </label>
+        </div>
         {canManage && (
           <button
             type="button"
@@ -231,8 +312,11 @@ export default function ShiftsPage() {
           </button>
         )}
       </div>
+      {deleteNotice ? (
+        <div className="alert-success mt-4 px-3 py-2 text-sm">{deleteNotice}</div>
+      ) : null}
       <Card title="Shift list" className="mt-4">
-        {shifts.length === 0 ? (
+        {visibleShifts.length === 0 ? (
           <EmptyState
             message={
               canManage
@@ -243,7 +327,7 @@ export default function ShiftsPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={shifts}
+            data={visibleShifts}
             keyExtractor={(row) => row.id}
             emptyMessage="No shifts"
           />
@@ -289,7 +373,7 @@ export default function ShiftsPage() {
               </div>
               <div>
                 <label htmlFor="add-shift-end" className="mb-1 block text-sm font-medium text-theme">
-                  End time
+                  End time{overnightPolicyOn && isOvernightWallClockSpan(formStart, formEnd) ? " (next day)" : ""}
                 </label>
                 <input
                   id="add-shift-end"
@@ -301,6 +385,11 @@ export default function ShiftsPage() {
                 />
               </div>
             </div>
+            {overnightPolicyOn && isOvernightWallClockSpan(formStart, formEnd) ? (
+              <p className="text-xs text-theme-muted">
+                This shift crosses midnight. Attendance and payroll use the shift-start business date.
+              </p>
+            ) : null}
             <div>
               <label htmlFor="add-shift-grace" className="mb-1 block text-sm font-medium text-theme">
                 Grace minutes (late clock-in allowed)
@@ -376,6 +465,7 @@ export default function ShiftsPage() {
                 <div>
                   <label htmlFor="edit-shift-end" className="mb-1 block text-sm font-medium text-theme">
                     End time
+                    {overnightPolicyOn && isOvernightWallClockSpan(formStart, formEnd) ? " (next day)" : ""}
                   </label>
                   <input
                     id="edit-shift-end"
@@ -387,6 +477,11 @@ export default function ShiftsPage() {
                   />
                 </div>
               </div>
+              {editShift.is_active === false ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  This shift is inactive (archived). Timing changes may be blocked if attendance history exists.
+                </p>
+              ) : null}
               <div>
                 <label htmlFor="edit-shift-grace" className="mb-1 block text-sm font-medium text-theme">
                   Grace minutes (late clock-in allowed)
@@ -430,7 +525,8 @@ export default function ShiftsPage() {
         {deleteShift && (
           <div className="space-y-4">
             <p className="text-sm text-theme-muted">
-              Are you sure you want to delete &quot;{deleteShift.name}&quot;? Employees assigned to this shift will need to be reassigned.
+              Remove &quot;{deleteShift.name}&quot;? If attendance sessions exist, the shift will be
+              archived (deactivated) instead of deleted. Employees on this shift may need reassignment.
             </p>
             <div className="flex justify-end gap-2">
               <button

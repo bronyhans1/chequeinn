@@ -16,6 +16,14 @@ import * as companyPolicyApi from "@/lib/api/companyPolicy.api";
 import { isApiError } from "@/lib/types/api";
 import type { PayrollRecord, PayrollReportResult, EarningsSummary } from "@/lib/api/payroll.api";
 import { formatCurrency } from "@/lib/utils/formatCurrency";
+import {
+  displayAttendanceDay,
+  displayHoursWorked,
+  displayOvertimeMinutes,
+  displayRegularMinutes,
+  displayRateHeader,
+  isSalaryDailyPayrollRecord,
+} from "@/lib/payroll/payrollSemantics";
 
 function statusBadge(status: string | undefined) {
   if (!status) return "—";
@@ -46,6 +54,16 @@ function payrollRowBreakdown(r: PayrollRecord): { base: number; late: number; ne
   const base = hasBase ? r.gross_before_late_deduction! : net + late;
   return { base, late, net };
 }
+
+function payrollTypeBadge(recordType?: string | null) {
+  if (isSalaryDailyPayrollRecord(recordType)) {
+    return <Badge variant="default">Monthly Day Credit</Badge>;
+  }
+  return <Badge variant="success">Hourly Session</Badge>;
+}
+
+const PAYROLL_TABLE_HELP =
+  "Monthly salaried rows show day credit (gross from daily rate × day units), not clocked hours. Hourly rows show session minutes. See Earnings for worked-time context.";
 
 export default function PayrollPage() {
   const { user } = useAuth();
@@ -195,16 +213,46 @@ export default function PayrollPage() {
     [showLateInRecords, currencyCode]
   );
 
-  const myColumns = useMemo(
+  const payrollCoreColumns = useMemo(
     () => [
+      {
+        key: "record_type",
+        header: "Type",
+        render: (r: PayrollRecord) => payrollTypeBadge(r.record_type),
+      },
       { key: "payroll_date", header: "Payroll date", render: (r: PayrollRecord) => r.payroll_date },
-      { key: "hours_worked", header: "Hours", render: (r: PayrollRecord) => r.hours_worked ?? "—" },
-      { key: "regular_minutes", header: "Regular (min)", render: (r: PayrollRecord) => r.regular_minutes ?? "—" },
-      { key: "overtime_minutes", header: "Overtime (min)", render: (r: PayrollRecord) => r.overtime_minutes ?? "—" },
+      {
+        key: "attendance_day",
+        header: "Attendance day",
+        render: (r: PayrollRecord) => displayAttendanceDay(r),
+      },
+      { key: "hours_worked", header: "Hours", render: (r: PayrollRecord) => displayHoursWorked(r) },
+      {
+        key: "regular_minutes",
+        header: "Regular (min)",
+        render: (r: PayrollRecord) => displayRegularMinutes(r),
+      },
+      {
+        key: "overtime_minutes",
+        header: "Overtime (min)",
+        render: (r: PayrollRecord) => displayOvertimeMinutes(r),
+      },
       {
         key: "hourly_rate",
         header: "Rate",
-        render: (r: PayrollRecord) => (r.hourly_rate != null ? formatCurrency(r.hourly_rate, currencyCode) : "—"),
+        render: (r: PayrollRecord) => {
+          const val =
+            r.hourly_rate != null ? formatCurrency(r.hourly_rate, currencyCode) : "—";
+          if (isSalaryDailyPayrollRecord(r.record_type)) {
+            return (
+              <span title="Daily rate for this attendance day">
+                <span className="block text-xs text-theme-muted">{displayRateHeader(r.record_type)}</span>
+                {val}
+              </span>
+            );
+          }
+          return val;
+        },
       },
       ...lateAmountColumns,
       {
@@ -213,6 +261,13 @@ export default function PayrollPage() {
         render: (r: PayrollRecord) => formatCurrency(r.gross_earnings, currencyCode),
       },
       { key: "status", header: "Status", render: (r: PayrollRecord) => statusBadge(r.status) },
+    ],
+    [currencyCode, lateAmountColumns, showLateInRecords]
+  );
+
+  const myColumns = useMemo(
+    () => [
+      ...payrollCoreColumns,
       {
         key: "payslip",
         header: "",
@@ -228,7 +283,7 @@ export default function PayrollPage() {
         ),
       },
     ],
-    [currencyCode, lateAmountColumns, payslipLoading, showLateInRecords]
+    [payrollCoreColumns, payslipLoading]
   );
 
   const companyColumns = useMemo(
@@ -256,24 +311,9 @@ export default function PayrollPage() {
           );
         },
       },
-      { key: "payroll_date", header: "Payroll date", render: (r: PayrollRecord) => r.payroll_date },
-      { key: "hours_worked", header: "Hours", render: (r: PayrollRecord) => r.hours_worked ?? "—" },
-      { key: "regular_minutes", header: "Regular (min)", render: (r: PayrollRecord) => r.regular_minutes ?? "—" },
-      { key: "overtime_minutes", header: "Overtime (min)", render: (r: PayrollRecord) => r.overtime_minutes ?? "—" },
-      {
-        key: "hourly_rate",
-        header: "Rate",
-        render: (r: PayrollRecord) => (r.hourly_rate != null ? formatCurrency(r.hourly_rate, currencyCode) : "—"),
-      },
-      ...lateAmountColumns,
-      {
-        key: "gross_earnings",
-        header: showLateInRecords ? "Payable" : "Gross",
-        render: (r: PayrollRecord) => formatCurrency(r.gross_earnings, currencyCode),
-      },
-      { key: "status", header: "Status", render: (r: PayrollRecord) => statusBadge(r.status) },
+      ...payrollCoreColumns,
     ],
-    [currencyCode, lateAmountColumns, showLateInRecords]
+    [payrollCoreColumns]
   );
 
   if (!payrollEnabled) {
@@ -473,6 +513,7 @@ export default function PayrollPage() {
 
       {/* My payroll — all users */}
       <h2 className="mt-8 text-base font-semibold text-theme">My payroll records</h2>
+      <p className="mt-1 text-xs text-theme-muted">{PAYROLL_TABLE_HELP}</p>
       <Card className="mt-2">
         {myError ? (
           <ErrorState message={myError} onRetry={loadMyPayroll} />
@@ -506,6 +547,7 @@ export default function PayrollPage() {
       {canCompanyPayroll && (
         <>
           <h2 className="mt-8 text-base font-semibold text-theme">Company payroll</h2>
+          <p className="mt-1 text-xs text-theme-muted">{PAYROLL_TABLE_HELP}</p>
           <Card className="mt-2">
             {companyError ? (
               <ErrorState message={companyError} onRetry={loadCompanyPayroll} />
@@ -514,7 +556,7 @@ export default function PayrollPage() {
             ) : (
               <>
                 <p className="mb-3 text-sm text-theme-muted">
-                  Total hours: {companyData.total_hours ?? 0} — Total payable:{" "}
+                  Total hours (hourly sessions only): {companyData.total_hours ?? 0} — Total payable:{" "}
                   {formatCurrency(companyData.total_gross_pay ?? 0, currencyCode)}
                   {(companyData.total_late_deduction ?? 0) > 0 ? (
                     <>

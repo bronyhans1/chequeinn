@@ -278,7 +278,7 @@ export default function ResetPasswordPage() {
               Back to sign in
             </a>
             <span className="text-center sm:text-right" style={{ opacity: 0.7 }}>
-              v{BRAND.version}
+              {BRAND.versionLabel}
             </span>
           </div>
         </div>

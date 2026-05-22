@@ -52,12 +52,13 @@ export default function SettingsPage() {
   const [workingWeekdays, setWorkingWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [currencyCode, setCurrencyCode] = useState<"GHS" | "USD">("GHS");
   const [payrollEnabled, setPayrollEnabled] = useState(true);
-  const [businessTimezone, setBusinessTimezone] = useState("UTC");
+  const [businessTimezone, setBusinessTimezone] = useState("Africa/Accra");
   const [attendanceDayClassificationEnabled, setAttendanceDayClassificationEnabled] = useState(false);
   const [minMinutesCounted, setMinMinutesCounted] = useState(60);
   const [fullDayMinutes, setFullDayMinutes] = useState(480);
   /** Server: cannot turn payroll off when records or wage rows exist. */
   const [payrollDisableBlocked, setPayrollDisableBlocked] = useState(false);
+  const [overnightShiftsEnabled, setOvernightShiftsEnabled] = useState(false);
 
   const [holidayYear, setHolidayYear] = useState(() => new Date().getFullYear());
   const [holidayMonth, setHolidayMonth] = useState(() => new Date().getMonth() + 1);
@@ -111,6 +112,7 @@ export default function SettingsPage() {
         setAttendanceDayClassificationEnabled(p.attendance_day_classification_enabled === true);
         if (typeof p.minimum_minutes_for_counted_day === "number") setMinMinutesCounted(p.minimum_minutes_for_counted_day);
         if (typeof p.full_day_minutes_threshold === "number") setFullDayMinutes(p.full_day_minutes_threshold);
+        setOvernightShiftsEnabled(p.overnight_shifts_enabled === true);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load policy");
@@ -162,7 +164,8 @@ export default function SettingsPage() {
           ? {
               currency_code: currencyCode,
               payroll_enabled: payrollEnabled,
-              business_timezone: businessTimezone.trim() || "UTC",
+              business_timezone: businessTimezone.trim() || "Africa/Accra",
+              overnight_shifts_enabled: overnightShiftsEnabled,
               attendance_day_classification_enabled: attendanceDayClassificationEnabled,
               minimum_minutes_for_counted_day: minMinutesCounted,
               full_day_minutes_threshold: fullDayMinutes,
@@ -189,6 +192,7 @@ export default function SettingsPage() {
         setAttendanceDayClassificationEnabled(saved.attendance_day_classification_enabled === true);
         if (typeof saved.minimum_minutes_for_counted_day === "number") setMinMinutesCounted(saved.minimum_minutes_for_counted_day);
         if (typeof saved.full_day_minutes_threshold === "number") setFullDayMinutes(saved.full_day_minutes_threshold);
+        setOvernightShiftsEnabled(saved.overnight_shifts_enabled === true);
       }
       await refreshUser();
       setSaveSuccess(true);
@@ -318,6 +322,26 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-theme-muted">
                 Used for earnings “today” and calendar month boundaries. Invalid names fall back to UTC on the server.
               </p>
+            </div>
+          ) : null}
+          {canEditCurrency ? (
+            <div className="surface-callout rounded-lg p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={overnightShiftsEnabled}
+                  onChange={(e) => setOvernightShiftsEnabled(e.target.checked)}
+                  disabled={!canEdit}
+                  className="mt-1 h-4 w-4 rounded border border-[color:var(--border-soft)] disabled:opacity-50"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-theme">Enable overnight shifts</span>
+                  <span className="mt-0.5 block text-xs text-theme-muted">
+                    Allows shifts that cross midnight (e.g. 22:00 → 06:00). Overnight attendance and payroll use
+                    shift-start business date ownership. Leave off for standard daytime-only companies.
+                  </span>
+                </span>
+              </label>
             </div>
           ) : null}
           {canEditCurrency ? (

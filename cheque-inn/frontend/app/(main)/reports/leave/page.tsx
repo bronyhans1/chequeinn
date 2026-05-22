@@ -20,6 +20,7 @@ import * as branchesApi from "@/lib/api/branches.api";
 import { isApiError } from "@/lib/types/api";
 import type { UserListItem } from "@/lib/api/users.api";
 import type { BranchDto } from "@/lib/api/branches.api";
+import { formatBusinessDateTime } from "@/lib/utils/businessDateTime";
 
 function statusBadge(status: string) {
   const s = status?.toLowerCase() ?? "";
@@ -30,6 +31,7 @@ function statusBadge(status: string) {
 
 export default function LeaveReportPage() {
   const { user } = useAuth();
+  const businessTz = user?.businessTimeZone ?? "Africa/Accra";
   const allowed = canAccessManagerFeatures(user?.roles);
   const canFilterBranch = hasRole(user?.roles, ["admin"]);
 
@@ -335,9 +337,7 @@ export default function LeaveReportPage() {
                       <td className="py-2 pr-3">{statusBadge(r.status)}</td>
                       <td className="py-2 pr-3">{r.reviewed_by_name || "—"}</td>
                       <td className="py-2 pr-3 whitespace-nowrap text-xs text-theme-muted">
-                        {r.reviewed_at
-                          ? new Date(r.reviewed_at).toLocaleString()
-                          : "—"}
+                        {formatBusinessDateTime(r.reviewed_at, businessTz)}
                       </td>
                     </tr>
                   ))}

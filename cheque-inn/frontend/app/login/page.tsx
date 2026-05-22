@@ -274,7 +274,7 @@ export default function LoginPage() {
                 Need help? Contact Us
               </a>
               <span className="text-center sm:text-right" style={{ opacity: 0.7 }}>
-                v{BRAND.version}
+                {BRAND.versionLabel}
               </span>
             </div>
           </div>
