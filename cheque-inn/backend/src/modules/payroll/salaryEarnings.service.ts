@@ -20,6 +20,7 @@ import {
   type IsoDate,
   type SalaryDivisorType,
 } from "./salaryEarnings.engine";
+import { sessionAttendanceDayForPayroll } from "../../lib/sessionAttendanceDay";
 import {
   normalizeBusinessTimeZone,
   yearMonthTodayInTimeZone,
@@ -105,14 +106,16 @@ export async function syncMonthlySalaryPayroll(
   const startIso = `${year}-${String(month).padStart(2, "0")}-01T00:00:00.000Z`;
   const endIso = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00.000Z`;
 
+  const startYmd = `${year}-${String(month).padStart(2, "0")}-01`;
+  const endYmd = asOf;
   const { rows: sessions } = await sessionsRepo.listSessionsForUser(userId, companyId, {
     startIso,
     endIso,
+    startYmd,
+    endYmd,
     limit: 2000,
     offset: 0,
   });
-  const startYmd = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endYmd = asOf;
   const overrides = await attendanceOverrideRepo.listForUserRange(companyId, userId, startYmd, endYmd);
   const overrideUnitsByDay = new Map<string, number>();
   for (const o of overrides) {
@@ -122,7 +125,8 @@ export async function syncMonthlySalaryPayroll(
   const workedMinutesByDay = new Map<string, number>();
   for (const s of sessions) {
     if (!s.check_in || s.status !== WorkSessionStatus.COMPLETED) continue;
-    const k = salaryAttendanceDayFromCheckIn(s.check_in);
+    const k = sessionAttendanceDayForPayroll(s);
+    if (!k) continue;
     const mins =
       typeof (s as any).duration_minutes === "number" && (s as any).duration_minutes >= 0
         ? (s as any).duration_minutes
@@ -184,13 +188,27 @@ export async function syncMonthlySalaryPayroll(
   }
 }
 
+/** Which calendar month to resync after clock-out (attendance ownership, not raw check-in UTC). */
+export function resolveSalarySyncYearMonth(
+  checkInIso: string,
+  attendanceDateYmd?: string | null
+): { year: number; month: number; attendanceYmd: string } {
+  const attendanceYmd =
+    attendanceDateYmd?.slice(0, 10) ?? salaryAttendanceDayFromCheckIn(checkInIso);
+  const [year, month] = attendanceYmd.split("-").map(Number);
+  return { year, month, attendanceYmd };
+}
+
 export async function syncSalaryMonthForUserIfMonthly(
   userId: string,
   companyId: string,
-  checkInIso: string
+  checkInIso: string,
+  attendanceDateYmd?: string | null
 ): Promise<void> {
-  const ymd = salaryAttendanceDayFromCheckIn(checkInIso);
-  const [y, m] = ymd.split("-").map(Number);
+  const { year: y, month: m, attendanceYmd: ymd } = resolveSalarySyncYearMonth(
+    checkInIso,
+    attendanceDateYmd
+  );
   const wage = await wageRepo.getEffectiveWageRow(userId, companyId, ymd);
   if (!wage || wage.rate_type !== "monthly") return;
   await syncMonthlySalaryPayroll(userId, companyId, y, m);
@@ -389,14 +407,16 @@ export async function getEarningsSummary(
   const startIso = `${year}-${String(month).padStart(2, "0")}-01T00:00:00.000Z`;
   const endIso = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00.000Z`;
 
+  const startYmd = `${year}-${String(month).padStart(2, "0")}-01`;
+  const endYmd = monthEnd;
   const { rows: sessions } = await sessionsRepo.listSessionsForUser(userId, companyId, {
     startIso,
     endIso,
+    startYmd,
+    endYmd,
     limit: 2000,
     offset: 0,
   });
-  const startYmd = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endYmd = monthEnd;
   const overrides = await attendanceOverrideRepo.listForUserRange(companyId, userId, startYmd, endYmd);
   const overrideUnitsByDay = new Map<string, number>();
   for (const o of overrides) {
@@ -405,7 +425,8 @@ export async function getEarningsSummary(
   const workedMinutesByDay = new Map<string, number>();
   for (const s of sessions) {
     if (!s.check_in || s.status !== WorkSessionStatus.COMPLETED) continue;
-    const k = salaryAttendanceDayFromCheckIn(s.check_in);
+    const k = sessionAttendanceDayForPayroll(s);
+    if (!k) continue;
     const mins =
       typeof (s as any).duration_minutes === "number" && (s as any).duration_minutes >= 0
         ? (s as any).duration_minutes
@@ -580,7 +601,9 @@ export async function getCurrentEarningsSummary(
   companyId: string
 ): Promise<EarningsSummaryDto> {
   const pol = await companyPolicy.getPolicy(companyId);
-  const tzRaw = (pol as { business_timezone?: string | null }).business_timezone;
-  const { year, month, todayIso } = yearMonthTodayInTimeZone(new Date(), tzRaw ?? "UTC");
-  return getEarningsSummary(userId, companyId, year, month, todayIso, tzRaw ?? "UTC");
+  const tz = normalizeBusinessTimeZone(
+    (pol as { business_timezone?: string | null }).business_timezone
+  );
+  const { year, month, todayIso } = yearMonthTodayInTimeZone(new Date(), tz);
+  return getEarningsSummary(userId, companyId, year, month, todayIso, tz);
 }

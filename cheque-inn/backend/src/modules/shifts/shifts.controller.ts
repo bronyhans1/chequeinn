@@ -61,7 +61,8 @@ export async function updateShift(
   try {
     const { companyId } = getRequiredCompanyContext(req);
     const id = routeParamString(req.params.id);
-    const { name, start_time, end_time, grace_minutes } = req.body || {};
+    const { name, start_time, end_time, grace_minutes, spans_midnight, is_active } =
+      req.body || {};
 
     if (!id) {
       res.status(400).json({ success: false, error: "Shift id is required" });
@@ -73,12 +74,15 @@ export async function updateShift(
       start_time,
       end_time,
       grace_minutes,
+      spans_midnight,
+      is_active,
     });
 
     if (result.error) {
-      res
-        .status(result.error === "Shift not found" ? 404 : 400)
-        .json({ success: false, error: result.error });
+      const status =
+        result.httpStatus ??
+        (result.error === "Shift not found" ? 404 : 400);
+      res.status(status).json({ success: false, error: result.error });
       return;
     }
 
@@ -107,9 +111,8 @@ export async function deleteShift(
     const result = await shiftsService.deleteShift(shiftId, companyId);
 
     if (result.error) {
-      res
-        .status(404)
-        .json({ success: false, error: result.error });
+      const status = result.httpStatus ?? 404;
+      res.status(status).json({ success: false, error: result.error });
       return;
     }
 

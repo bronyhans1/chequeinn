@@ -8,6 +8,10 @@ export interface ShiftRecord {
   end_time: string;
   grace_minutes: number | null;
   created_at: string;
+  /** V2: crosses calendar midnight when true (requires overnight_shifts_enabled on company). */
+  spans_midnight?: boolean;
+  /** V2: archived shifts must not be deleted when sessions reference them. */
+  is_active?: boolean;
 }
 
 export interface CreateShiftInput {
@@ -15,6 +19,8 @@ export interface CreateShiftInput {
   start_time: string;
   end_time: string;
   grace_minutes?: number;
+  spans_midnight?: boolean;
+  is_active?: boolean;
 }
 
 export interface UpdateShiftInput {
@@ -22,6 +28,8 @@ export interface UpdateShiftInput {
   start_time?: string;
   end_time?: string;
   grace_minutes?: number;
+  spans_midnight?: boolean;
+  is_active?: boolean;
 }
 
 export async function createShift(
@@ -36,6 +44,8 @@ export async function createShift(
       start_time: input.start_time,
       end_time: input.end_time,
       grace_minutes: input.grace_minutes ?? 0,
+      spans_midnight: input.spans_midnight ?? false,
+      is_active: input.is_active ?? true,
     })
     .select("*")
     .single();
@@ -86,6 +96,8 @@ export async function updateShift(
   if (input.start_time !== undefined) payload.start_time = input.start_time;
   if (input.end_time !== undefined) payload.end_time = input.end_time;
   if (input.grace_minutes !== undefined) payload.grace_minutes = input.grace_minutes;
+  if (input.spans_midnight !== undefined) payload.spans_midnight = input.spans_midnight;
+  if (input.is_active !== undefined) payload.is_active = input.is_active;
 
   if (Object.keys(payload).length === 0) return getShiftById(id, companyId);
 
@@ -123,5 +135,20 @@ export async function deleteShift(
   }
 
   return !!data;
+}
+
+/** Any work_session rows tied to this shift (historical integrity). */
+export async function countSessionsForShift(
+  shiftId: string,
+  companyId: string
+): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("work_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId)
+    .eq("shift_id", shiftId);
+
+  if (error) throw error;
+  return count ?? 0;
 }
 

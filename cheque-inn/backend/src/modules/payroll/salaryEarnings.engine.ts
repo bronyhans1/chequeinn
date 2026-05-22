@@ -190,11 +190,22 @@ export function salaryAttendanceDayFromCheckIn(checkInIso: string): IsoDate {
  * that recorded lateness wins. Avoids stacking pay impact / summaries when someone clocks
  * in multiple times the same day.
  */
+/** Attendance ownership day for late aggregation (matches sessionAttendanceDayForPayroll). */
+export function attendanceDayKeyForSession(session: {
+  attendance_date?: string | null;
+  check_in: string | null;
+}): IsoDate | null {
+  if (session.attendance_date) return session.attendance_date.slice(0, 10) as IsoDate;
+  if (!session.check_in) return null;
+  return salaryAttendanceDayFromCheckIn(session.check_in);
+}
+
 export function aggregateLateMinutesByAttendanceDay(
   sessions: Array<{
     check_in: string | null;
     status: string;
     late_minutes?: number | null;
+    attendance_date?: string | null;
   }>
 ): Map<IsoDate, number> {
   type Cand = { checkInMs: number; late: number };
@@ -203,7 +214,8 @@ export function aggregateLateMinutesByAttendanceDay(
     if (!s.check_in || s.status !== WorkSessionStatus.COMPLETED) continue;
     const lm = typeof s.late_minutes === "number" && s.late_minutes > 0 ? s.late_minutes : 0;
     if (lm <= 0) continue;
-    const day = salaryAttendanceDayFromCheckIn(s.check_in);
+    const day = attendanceDayKeyForSession(s);
+    if (!day) continue;
     const checkInMs = new Date(s.check_in).getTime();
     const prev = best.get(day);
     if (!prev || checkInMs < prev.checkInMs) best.set(day, { checkInMs, late: lm });

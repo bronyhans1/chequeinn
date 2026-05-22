@@ -14,6 +14,8 @@ export interface AttendanceReportRow {
   department_name: string;
   check_in: string | null;
   check_out: string | null;
+  /** Attendance ownership day (V2); aligns with payroll bucketing. */
+  attendance_date: string | null;
   status: string;
   duration_minutes: number | null;
   total_hours: number | null;
@@ -92,6 +94,11 @@ async function enrichSessionsToRows(
       department_name: s.department_id ? departmentName.get(s.department_id) ?? "—" : "—",
       check_in: s.check_in,
       check_out: s.check_out,
+      attendance_date: s.attendance_date
+        ? String(s.attendance_date).slice(0, 10)
+        : s.check_in
+          ? s.check_in.slice(0, 10)
+          : null,
       status: s.status,
       duration_minutes: minutesWorked(s),
       total_hours: s.total_hours ?? null,
@@ -117,6 +124,8 @@ export async function getAttendanceReportPage(
   const { rows: raw, total } = await sessionsRepo.listSessionsForCompany(companyId, {
     startIso,
     endIso,
+    startYmd: startDateYmd,
+    endYmd: endDateYmd,
     userId,
     scopedUserIds,
     limit: safeLimit,
@@ -147,6 +156,8 @@ async function fetchAllSessionsForExport(
     const { rows, total } = await sessionsRepo.listSessionsForCompany(companyId, {
       startIso,
       endIso,
+      startYmd: startDateYmd,
+      endYmd: endDateYmd,
       userId,
       scopedUserIds,
       limit: PAGE_SIZE,
@@ -184,6 +195,8 @@ export async function buildAttendanceReportCsv(
   const { total } = await sessionsRepo.listSessionsForCompany(companyId, {
     startIso: toStartIso(startDateYmd),
     endIso: toEndExclusiveIso(endDateYmd),
+    startYmd: startDateYmd,
+    endYmd: endDateYmd,
     userId,
     scopedUserIds,
     limit: 1,
@@ -199,6 +212,7 @@ export async function buildAttendanceReportCsv(
     "department",
     "check_in",
     "check_out",
+    "attendance_date",
     "status",
     "duration_minutes",
     "total_hours",
@@ -219,6 +233,7 @@ export async function buildAttendanceReportCsv(
         csvEscape(r.department_name),
         csvEscape(r.check_in),
         csvEscape(r.check_out),
+        csvEscape(r.attendance_date),
         csvEscape(r.status),
         csvEscape(r.duration_minutes),
         csvEscape(r.total_hours),
@@ -262,6 +277,7 @@ export async function buildAttendanceReportExcel(
     "Department",
     "Check-in",
     "Check-out",
+    "Attendance day",
     "Status",
     "Duration (min)",
     "Total hours",
@@ -278,6 +294,7 @@ export async function buildAttendanceReportExcel(
       r.department_name,
       r.check_in,
       r.check_out,
+      r.attendance_date,
       r.status,
       r.duration_minutes,
       r.total_hours,

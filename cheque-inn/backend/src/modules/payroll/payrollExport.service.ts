@@ -1,13 +1,22 @@
 import * as payrollRepo from "./payroll.repository";
 import * as usersRepo from "../users/users.repository";
+import {
+  exportAttendanceDayDisplay,
+  exportHoursWorkedDisplay,
+  exportOvertimeMinutesDisplay,
+  exportRegularMinutesDisplay,
+  payrollRecordTypeLabel,
+} from "../../lib/payrollSemantics";
 
 const CSV_HEADERS = [
+  "Record Type",
   "Payroll Date",
+  "Attendance Day",
   "Employee Name",
   "Hours Worked",
   "Regular Minutes",
   "Overtime Minutes",
-  "Hourly Rate",
+  "Hourly Or Daily Rate",
   "Gross Earnings",
 ];
 
@@ -45,11 +54,13 @@ export async function exportMonthlyPayroll(
   for (const r of records) {
     const employeeName = userMap.get(r.user_id) ?? "—";
     rows.push([
+      payrollRecordTypeLabel(r.record_type),
       r.payroll_date ?? "",
+      exportAttendanceDayDisplay(r),
       employeeName,
-      String(r.hours_worked ?? 0),
-      String(r.regular_minutes ?? 0),
-      String(r.overtime_minutes ?? 0),
+      exportHoursWorkedDisplay(r),
+      exportRegularMinutesDisplay(r),
+      exportOvertimeMinutesDisplay(r),
       String(r.hourly_rate ?? 0),
       String(r.gross_earnings ?? 0),
     ]);

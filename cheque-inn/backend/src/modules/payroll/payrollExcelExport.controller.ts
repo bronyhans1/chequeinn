@@ -2,13 +2,14 @@ import { Response } from "express";
 import { ContextRequest } from "../../middleware/context.middleware";
 import { getRequiredCompanyContext } from "../../lib/companyRequestContext";
 import * as payrollExcelExportService from "./payrollExcelExport.service";
+import { notifyPayrollExportReady } from "../notifications/operationalNotifications.service";
 
 export async function exportMonthlyPayrollExcel(
   req: ContextRequest,
   res: Response
 ): Promise<void> {
   try {
-    const { companyId } = getRequiredCompanyContext(req);
+    const { companyId, userId } = getRequiredCompanyContext(req);
     const year = Number(req.query.year);
     const month = Number(req.query.month);
 
@@ -43,6 +44,13 @@ export async function exportMonthlyPayrollExcel(
       `attachment; filename="${filename}"`
     );
     res.send(buffer);
+    notifyPayrollExportReady({
+      companyId,
+      userId,
+      year,
+      month,
+      format: "xlsx",
+    }).catch((err) => console.warn("notifyPayrollExportReady", err));
   } catch (err) {
     console.error("exportMonthlyPayrollExcel error", err);
     res.status(500).json({ success: false, error: "Internal server error" });

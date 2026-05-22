@@ -12,10 +12,19 @@ import type { ManualAttendanceReasonCode } from "../../constants/manualAttendanc
 import { computeEarlyLeaveAndHalfDay as computeEarlyLeaveAndHalfDayPure } from "./earlyLeaveHalfDay";
 import { coalesceSessionDepartmentFromProfile } from "./sessionDepartmentCoalesce";
 import { checkBranchGeofence } from "../../lib/validateAttendanceQr";
+import { shiftRowActive } from "../shifts/shifts.service";
 import {
-  getClockMinutesUtcFromIso,
-} from "../../lib/attendanceClockTime";
-import { businessTodayUtcRange } from "../../lib/businessCalendar";
+  lateMinutesAtCheckIn,
+  overtimeMinutesAtCheckOut,
+  resolveWindowAtCheckIn,
+  toShiftWindowSource,
+} from "../../lib/shiftWindow";
+import { parseTimeToMinutes } from "../../lib/shiftTimeModel";
+import {
+  businessTodayUtcRange,
+  calendarYmdInTimeZone,
+  normalizeBusinessTimeZone,
+} from "../../lib/businessCalendar";
 import {
   EMPLOYEE_MSG_CHECKIN_ONLY_ASSIGNED_OFFICE,
   EMPLOYEE_MSG_DEPT_NOT_IN_OFFICE,
@@ -96,7 +105,12 @@ async function runPostClockOutPayroll(
 
   if (checkInIso) {
     try {
-      await syncSalaryMonthForUserIfMonthly(updated.user_id, companyId, checkInIso);
+      await syncSalaryMonthForUserIfMonthly(
+        updated.user_id,
+        companyId,
+        checkInIso,
+        updated.attendance_date
+      );
     } catch (salaryErr) {
       const msg =
         salaryErr instanceof Error ? salaryErr.message : String(salaryErr);
@@ -136,22 +150,6 @@ function calculateTotalHours(
   const hours = diffMs / (1000 * 60 * 60);
   // round to 2 decimal places
   return Math.round(hours * 100) / 100;
-}
-
-function getTodayRangeUtc(): { start: string; end: string } {
-  const now = new Date();
-  const start = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    0, 0, 0, 0
-  ));
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-  };
 }
 
 async function resolveClockInBranchAndDepartment(
@@ -237,24 +235,6 @@ async function resolveBranchForOpenSession(
   return null;
 }
 
-function timeToMinutes(time: string): number | null {
-  const parts = time.split(":");
-  if (parts.length < 2) return null;
-  const h = Number(parts[0]);
-  const m = Number(parts[1]);
-  if (
-    Number.isNaN(h) ||
-    Number.isNaN(m) ||
-    h < 0 ||
-    h > 23 ||
-    m < 0 ||
-    m > 59
-  ) {
-    return null;
-  }
-  return h * 60 + m;
-}
-
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -267,51 +247,64 @@ function isValidLongitude(value: number): boolean {
   return value >= -180 && value <= 180;
 }
 
+async function getCompanyBusinessTimeZone(companyId: string): Promise<string> {
+  const policy = await companyPolicyService.getPolicy(companyId);
+  const raw = (policy as { business_timezone?: string | null } | null)?.business_timezone;
+  return normalizeBusinessTimeZone(typeof raw === "string" ? raw : null);
+}
+
+/**
+ * Lateness vs shift start — centralized through resolveShiftWindow().
+ */
 async function getShiftInfoForClockIn(
   userId: string,
   companyId: string,
   checkInIso: string
-): Promise<{ shiftId?: string; lateMinutes: number }> {
+): Promise<{
+  shiftId?: string;
+  lateMinutes: number;
+  shiftEntity: shiftsRepo.ShiftRecord | null;
+}> {
   try {
-    let shift: Awaited<ReturnType<typeof shiftsRepo.getShiftById>> = null;
+    const businessTz = await getCompanyBusinessTimeZone(companyId);
+    const policy = await companyPolicyService.getPolicy(companyId);
+    const overnightOn = policy.overnight_shifts_enabled === true;
+    let shift: shiftsRepo.ShiftRecord | null = null;
 
     const user = await usersRepo.getUserById(userId);
     if (user?.shift_id) {
-      shift = await shiftsRepo.getShiftById(user.shift_id, companyId);
+      const s = await shiftsRepo.getShiftById(user.shift_id, companyId);
+      if (s && shiftRowActive(s)) shift = s;
     }
 
     if (!shift) {
-      const shifts = await shiftsRepo.getShifts(companyId);
-      if (!shifts || shifts.length === 0) {
-        return { shiftId: undefined, lateMinutes: 0 };
+      const rows = await shiftsRepo.getShifts(companyId);
+      const active = rows.filter(shiftRowActive);
+      if (!active.length) {
+        return { shiftId: undefined, lateMinutes: 0, shiftEntity: null };
       }
-      shift = shifts[0];
-    }
-    const startMinutes = timeToMinutes(shift.start_time);
-    if (startMinutes === null) {
-      return { shiftId: shift.id, lateMinutes: 0 };
+      shift = active[0];
     }
 
-    const grace = shift.grace_minutes ?? 0;
-    const allowedMinutes = startMinutes + grace;
-
-    const checkInMinutes = getClockMinutesUtcFromIso(checkInIso);
-
-    if (checkInMinutes <= allowedMinutes) {
-      return { shiftId: shift.id, lateMinutes: 0 };
-    }
-
-    const late = checkInMinutes - allowedMinutes;
-    return { shiftId: shift.id, lateMinutes: late };
+    const late = lateMinutesAtCheckIn({
+      checkInIso,
+      businessTimeZone: businessTz,
+      overnightShiftsEnabled: overnightOn,
+      shift: toShiftWindowSource(shift),
+    });
+    return { shiftId: shift.id, lateMinutes: late, shiftEntity: shift };
   } catch {
-    // Do not block clock-in if shift lookup fails
-    return { shiftId: undefined, lateMinutes: 0 };
+    return { shiftId: undefined, lateMinutes: 0, shiftEntity: null };
   }
 }
 
+/**
+ * Shift-end overtime — centralized through resolveShiftWindow() (check-in anchored).
+ */
 async function getOvertimeMinutes(
   shiftId: string | null | undefined,
   companyId: string,
+  checkInIso: string,
   checkOutIso: string
 ): Promise<number> {
   if (!shiftId) return 0;
@@ -319,15 +312,15 @@ async function getOvertimeMinutes(
     const shift = await shiftsRepo.getShiftById(shiftId, companyId);
     if (!shift) return 0;
 
-    const shiftEndMinutes = timeToMinutes(shift.end_time);
-    if (shiftEndMinutes === null) return 0;
-
-    const clockOutMinutes = getClockMinutesUtcFromIso(checkOutIso);
-
-    if (clockOutMinutes > shiftEndMinutes) {
-      return clockOutMinutes - shiftEndMinutes;
-    }
-    return 0;
+    const businessTz = await getCompanyBusinessTimeZone(companyId);
+    const policy = await companyPolicyService.getPolicy(companyId);
+    return overtimeMinutesAtCheckOut({
+      checkInIso,
+      checkOutIso,
+      businessTimeZone: businessTz,
+      overnightShiftsEnabled: policy.overnight_shifts_enabled === true,
+      shift: toShiftWindowSource(shift),
+    });
   } catch {
     return 0;
   }
@@ -350,8 +343,8 @@ async function getEarlyLeaveAndHalfDay(
     const shift = await shiftsRepo.getShiftById(shiftId, companyId);
     if (!shift) return { earlyLeaveMinutes: 0, halfDay: false };
 
-    const startM = timeToMinutes(shift.start_time);
-    const endM = timeToMinutes(shift.end_time);
+    const startM = parseTimeToMinutes(shift.start_time);
+    const endM = parseTimeToMinutes(shift.end_time);
     if (startM === null || endM === null) return { earlyLeaveMinutes: 0, halfDay: false };
 
     return computeEarlyLeaveAndHalfDayPure(
@@ -422,6 +415,17 @@ export async function clockIn(
   const latenessTracking = await companyPolicyService.isLatenessTrackingEnabled(companyId);
   const lateMinutesStored = latenessTracking ? shiftInfo.lateMinutes : 0;
 
+  const businessTz = await getCompanyBusinessTimeZone(companyId);
+  const policy = await companyPolicyService.getPolicy(companyId);
+  const windowCtx = resolveWindowAtCheckIn({
+    checkInIso: checkIn,
+    businessTimeZone: businessTz,
+    overnightShiftsEnabled: policy.overnight_shifts_enabled === true,
+    shift: shiftInfo.shiftEntity
+      ? toShiftWindowSource(shiftInfo.shiftEntity)
+      : null,
+  });
+
   try {
     const session = await repo.createSession({
       user_id: userId,
@@ -432,6 +436,7 @@ export async function clockIn(
       ...(departmentId ? { department_id: departmentId } : {}),
       shift_id: shiftInfo.shiftId,
       late_minutes: lateMinutesStored,
+      attendance_date: windowCtx.attendanceDateYmd,
       ...(options?.manual && options.manualAttendance
         ? {
             manual_check_in: true,
@@ -493,6 +498,7 @@ export async function clockOut(
   const overtimeMinutes = await getOvertimeMinutes(
     existing.shift_id,
     companyId,
+    existing.check_in,
     checkOut
   );
 
@@ -555,6 +561,7 @@ export async function manualClockOut(
   const overtimeMinutes = await getOvertimeMinutes(
     existing.shift_id,
     companyId,
+    existing.check_in,
     checkOut
   );
 
@@ -593,32 +600,62 @@ export async function manualClockOut(
   return { data: updated, warnings };
 }
 
+/**
+ * Include any open session even when attendance_date is not "today" (overnight still active after midnight).
+ * Matches web attendance overview which uses getActiveSessions alongside today filter.
+ */
+export function mergeOpenSessionIntoTodayRows(
+  todayRows: repo.WorkSessionRecord[],
+  open: repo.WorkSessionRecord | null
+): repo.WorkSessionRecord[] {
+  if (!open) return todayRows;
+  if (todayRows.some((r) => r.id === open.id)) return todayRows;
+  const merged = [...todayRows, open];
+  merged.sort((a, b) => {
+    const ta = a.check_in ? new Date(a.check_in).getTime() : 0;
+    const tb = b.check_in ? new Date(b.check_in).getTime() : 0;
+    return ta - tb;
+  });
+  return merged;
+}
+
 export async function getTodaySessionsForUser(
   userId: string,
   companyId: string
 ): Promise<repo.WorkSessionRecord[]> {
-  const policy = await companyPolicyService.getPolicy(companyId);
-  const tz =
-    typeof (policy as { business_timezone?: string | null }).business_timezone === "string" &&
-    (policy as { business_timezone: string }).business_timezone.trim()
-      ? (policy as { business_timezone: string }).business_timezone.trim()
-      : "UTC";
+  const tz = await getCompanyBusinessTimeZone(companyId);
   const { startIso, endIso } = businessTodayUtcRange(new Date(), tz);
-  return repo.getSessionsForUserToday(userId, companyId, startIso, endIso);
+  const todayYmd = calendarYmdInTimeZone(new Date(), tz).iso;
+  const todayRows = await repo.getSessionsForUserToday(
+    userId,
+    companyId,
+    startIso,
+    endIso,
+    todayYmd
+  );
+  const open = await repo.findOpenSessionByUser(userId, companyId);
+  if (!open?.check_in) return todayRows;
+  const isOpen =
+    open.status === WorkSessionStatus.ACTIVE ||
+    open.check_out == null;
+  if (!isOpen) return todayRows;
+  return mergeOpenSessionIntoTodayRows(todayRows, open);
 }
 
 export async function getTodaySessionsForCompany(
   companyId: string,
   scopedUserIds?: string[] | null
 ): Promise<repo.WorkSessionRecord[]> {
-  const policy = await companyPolicyService.getPolicy(companyId);
-  const tz =
-    typeof (policy as { business_timezone?: string | null }).business_timezone === "string" &&
-    (policy as { business_timezone: string }).business_timezone.trim()
-      ? (policy as { business_timezone: string }).business_timezone.trim()
-      : "UTC";
+  const tz = await getCompanyBusinessTimeZone(companyId);
   const { startIso, endIso } = businessTodayUtcRange(new Date(), tz);
-  return repo.getCompanySessionsToday(companyId, startIso, endIso, scopedUserIds);
+  const todayYmd = calendarYmdInTimeZone(new Date(), tz).iso;
+  return repo.getCompanySessionsToday(companyId, startIso, endIso, todayYmd, scopedUserIds);
+}
+
+function inclusiveEndYmdFromExclusiveEndIso(endIso: string): string {
+  const d = new Date(endIso);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 /** API row for history tables (branch attendance site + optional department + optional employee display). */
@@ -640,6 +677,9 @@ export interface SessionHistoryItem {
   manual_check_in_reason?: string | null;
   manual_check_out?: boolean | null;
   manual_check_out_reason?: string | null;
+  /** V2 ownership day (YYYY-MM-DD); may differ from check-in calendar day for overnight. */
+  attendance_date?: string | null;
+  overnight_session?: boolean;
 }
 
 function minutesWorkedFallback(s: repo.WorkSessionRecord): number | null {
@@ -726,6 +766,14 @@ async function enrichSessions(
       manual_check_in_reason: s.manual_check_in_reason ?? null,
       manual_check_out: s.manual_check_out ?? false,
       manual_check_out_reason: s.manual_check_out_reason ?? null,
+      attendance_date: s.attendance_date
+        ? String(s.attendance_date).slice(0, 10)
+        : null,
+      overnight_session: Boolean(
+        s.attendance_date &&
+          s.check_in &&
+          String(s.attendance_date).slice(0, 10) !== s.check_in.slice(0, 10)
+      ),
     };
   });
 }
@@ -744,9 +792,14 @@ export async function getMySessionHistory(
   limit: number;
 }> {
   const offset = (page - 1) * limit;
+  const startYmd = startIso?.slice(0, 10);
+  const endYmd =
+    startIso && endIso ? inclusiveEndYmdFromExclusiveEndIso(endIso) : undefined;
   const { rows, total } = await repo.listSessionsForUser(userId, companyId, {
     startIso,
     endIso,
+    startYmd,
+    endYmd,
     limit,
     offset,
   });
@@ -771,11 +824,18 @@ export async function getCompanySessionHistory(
   limit: number;
 }> {
   const offset = (page - 1) * limit;
+  const startYmd = options.startIso?.slice(0, 10);
+  const endYmd =
+    options.startIso && options.endIso
+      ? inclusiveEndYmdFromExclusiveEndIso(options.endIso)
+      : undefined;
   const { rows, total } = await repo.listSessionsForCompany(companyId, {
     userId: options.userId,
     scopedUserIds: options.scopedUserIds,
     startIso: options.startIso,
     endIso: options.endIso,
+    startYmd,
+    endYmd,
     limit,
     offset,
   });

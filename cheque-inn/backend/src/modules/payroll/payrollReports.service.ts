@@ -1,5 +1,6 @@
 import * as repo from "./payroll.repository";
 import { supabaseAdmin } from "../../config/supabase";
+import { isSalaryDailyPayrollRecord } from "../../lib/payrollSemantics";
 
 export interface PayrollReportResult {
   records: repo.PayrollRecord[];
@@ -48,6 +49,13 @@ function computeTotals(
   let totalLateDeduction = 0;
 
   for (const r of records) {
+    if (isSalaryDailyPayrollRecord(r.record_type)) {
+      if (typeof r.gross_earnings === "number") totalGrossPay += r.gross_earnings;
+      const br = repo.payrollRecordEarningsBreakdown(r);
+      totalBaseBeforeLate += br.baseBeforeLate;
+      totalLateDeduction += br.lateDeduction;
+      continue;
+    }
     if (typeof r.hours_worked === "number") totalHours += r.hours_worked;
     if (typeof r.overtime_minutes === "number")
       totalOvertimeMinutes += r.overtime_minutes;

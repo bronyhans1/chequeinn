@@ -1,19 +1,14 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { enforceAccountNotBlocked } from "../../middleware/accountAccess.middleware";
-import { contextMiddleware } from "../../middleware/context.middleware";
+import { platformAdminStack } from "../../middleware/standardGuards";
 import { requireRole } from "../../middleware/role.middleware";
 import { createRateLimit } from "../../middleware/rateLimit.middleware";
 import * as platformController from "./platform.controller";
 
 const router = Router();
 
-const platformAdminGuard = [
-  authMiddleware,
-  enforceAccountNotBlocked,
-  contextMiddleware,
-  requireRole(["PLATFORM_ADMIN"]),
-];
+const platformAdminGuard = [...platformAdminStack, requireRole(["PLATFORM_ADMIN"])];
 
 router.get(
   "/support-settings",

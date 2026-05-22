@@ -1,5 +1,9 @@
 import { supabaseAdmin } from "../../config/supabase";
 import { WorkSessionStatus } from "../../constants/workSessionStatus";
+import {
+  postgrestOrFilterForAttendanceDayInRange,
+  postgrestOrFilterForAttendanceOnBusinessDay,
+} from "../../lib/sessionAttendanceQuery";
 
 export interface WorkSessionRecord {
   id: string;
@@ -27,6 +31,8 @@ export interface WorkSessionRecord {
   manual_check_out_reason?: string | null;
   manual_check_out_note?: string | null;
   manual_check_out_by?: string | null;
+  /** V2 payroll/report ownership day (YYYY-MM-DD); nullable until backfill. */
+  attendance_date?: string | null;
 }
 
 export interface CreateSessionInput {
@@ -38,6 +44,7 @@ export interface CreateSessionInput {
   branch_id?: string;
   shift_id?: string;
   late_minutes?: number;
+  attendance_date?: string;
   manual_check_in?: boolean;
   manual_check_in_reason?: string | null;
   manual_check_in_note?: string | null;
@@ -112,6 +119,9 @@ export async function createSession(
   if (typeof input.late_minutes === "number") {
     payload.late_minutes = input.late_minutes;
   }
+  if (input.attendance_date) {
+    payload.attendance_date = input.attendance_date;
+  }
   if (input.manual_check_in) {
     payload.manual_check_in = true;
     payload.manual_check_in_reason = input.manual_check_in_reason ?? null;
@@ -170,15 +180,15 @@ export async function getSessionsForUserToday(
   userId: string,
   companyId: string,
   startIso: string,
-  endIso: string
+  endIso: string,
+  todayYmd: string
 ): Promise<WorkSessionRecord[]> {
   const { data, error } = await supabaseAdmin
     .from("work_sessions")
     .select("*")
     .eq("user_id", userId)
     .eq("company_id", companyId)
-    .gte("check_in", startIso)
-    .lt("check_in", endIso)
+    .or(postgrestOrFilterForAttendanceOnBusinessDay({ todayYmd, startIso, endIso }))
     .order("check_in", { ascending: true });
 
   if (error) throw error;
@@ -189,6 +199,7 @@ export async function getCompanySessionsToday(
   companyId: string,
   startIso: string,
   endIso: string,
+  todayYmd: string,
   /** Manager/HR: restrict to these users; `undefined` = whole company. */
   scopedUserIds?: string[] | null
 ): Promise<WorkSessionRecord[]> {
@@ -200,8 +211,7 @@ export async function getCompanySessionsToday(
     .from("work_sessions")
     .select("*")
     .eq("company_id", companyId)
-    .gte("check_in", startIso)
-    .lt("check_in", endIso)
+    .or(postgrestOrFilterForAttendanceOnBusinessDay({ todayYmd, startIso, endIso }))
     .order("check_in", { ascending: true });
 
   if (scopedUserIds !== undefined && scopedUserIds !== null) {
@@ -231,6 +241,9 @@ export interface ListSessionsOptions {
   startIso?: string;
   /** Exclusive upper bound on check_in (sessions with check_in < endIso) */
   endIso?: string;
+  /** Inclusive YYYY-MM-DD for attendance_date filter (with startIso/endIso fallback). */
+  startYmd?: string;
+  endYmd?: string;
   limit: number;
   offset: number;
 }
@@ -250,11 +263,22 @@ export async function listSessionsForUser(
     .eq("user_id", userId)
     .order("check_in", { ascending: false });
 
-  if (opts.startIso) {
-    q = q.gte("check_in", opts.startIso);
-  }
-  if (opts.endIso) {
-    q = q.lt("check_in", opts.endIso);
+  if (opts.startIso && opts.endIso && opts.startYmd && opts.endYmd) {
+    q = q.or(
+      postgrestOrFilterForAttendanceDayInRange({
+        startYmd: opts.startYmd,
+        endYmd: opts.endYmd,
+        startIso: opts.startIso,
+        endIso: opts.endIso,
+      })
+    );
+  } else {
+    if (opts.startIso) {
+      q = q.gte("check_in", opts.startIso);
+    }
+    if (opts.endIso) {
+      q = q.lt("check_in", opts.endIso);
+    }
   }
 
   const { data, error, count } = await q.range(
@@ -297,11 +321,22 @@ export async function listSessionsForCompany(
   if (opts.userId) {
     q = q.eq("user_id", opts.userId);
   }
-  if (opts.startIso) {
-    q = q.gte("check_in", opts.startIso);
-  }
-  if (opts.endIso) {
-    q = q.lt("check_in", opts.endIso);
+  if (opts.startIso && opts.endIso && opts.startYmd && opts.endYmd) {
+    q = q.or(
+      postgrestOrFilterForAttendanceDayInRange({
+        startYmd: opts.startYmd,
+        endYmd: opts.endYmd,
+        startIso: opts.startIso,
+        endIso: opts.endIso,
+      })
+    );
+  } else {
+    if (opts.startIso) {
+      q = q.gte("check_in", opts.startIso);
+    }
+    if (opts.endIso) {
+      q = q.lt("check_in", opts.endIso);
+    }
   }
 
   const { data, error, count } = await q.range(

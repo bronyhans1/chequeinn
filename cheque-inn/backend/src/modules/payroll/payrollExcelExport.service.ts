@@ -1,14 +1,23 @@
 import ExcelJS from "exceljs";
 import * as payrollRepo from "./payroll.repository";
 import * as usersRepo from "../users/users.repository";
+import {
+  exportAttendanceDayDisplay,
+  exportHoursWorkedDisplay,
+  exportOvertimeMinutesDisplay,
+  exportRegularMinutesDisplay,
+  payrollRecordTypeLabel,
+} from "../../lib/payrollSemantics";
 
 const COLUMNS = [
+  "Record Type",
   "Payroll Date",
+  "Attendance Day",
   "Employee Name",
   "Hours Worked",
   "Regular Minutes",
   "Overtime Minutes",
-  "Hourly Rate",
+  "Hourly Or Daily Rate",
   "Gross Earnings",
 ] as const;
 
@@ -43,11 +52,13 @@ export async function exportMonthlyPayrollExcel(
   for (const r of records) {
     const employeeName = userMap.get(r.user_id) ?? "—";
     sheet.addRow([
+      payrollRecordTypeLabel(r.record_type),
       r.payroll_date ?? "",
+      exportAttendanceDayDisplay(r),
       employeeName,
-      r.hours_worked ?? 0,
-      r.regular_minutes ?? 0,
-      r.overtime_minutes ?? 0,
+      exportHoursWorkedDisplay(r),
+      exportRegularMinutesDisplay(r),
+      exportOvertimeMinutesDisplay(r),
       r.hourly_rate ?? 0,
       r.gross_earnings ?? 0,
     ]);
